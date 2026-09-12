@@ -22,7 +22,6 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, "public"))); // sajikan website (index.html + logo)
 
 const {
   SMTP_HOST = "smtp.gmail.com",   // ganti kalau email pawsly.id bukan di Google
@@ -199,6 +198,10 @@ function requireAdmin(req, res) {
 // --- routes ----------------------------------------------------------------
 
 app.get("/health", (_req, res) => res.send("Reservasi backend jalan ✅"));
+
+// Sajikan website (versi flat: file ada di folder yang sama dengan server.js)
+app.get("/", (_req, res) => res.sendFile(path.join(__dirname, "index.html")));
+app.get("/fufu-logo.png", (_req, res) => res.sendFile(path.join(__dirname, "fufu-logo.png")));
 
 // Slots already taken for a table on a date.
 app.get("/api/availability", (req, res) => {

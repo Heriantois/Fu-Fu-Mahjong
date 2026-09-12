@@ -1,3 +1,11 @@
+# ⚠️ This is the FLAT version — no folders
+
+Every file sits at the same level (there is **no `public` folder**). When you upload
+to GitHub, open this folder, select **all** the files, and drag them in together —
+there is nothing that can get misplaced. Replace the old files (same names overwrite).
+
+---
+
 # Fu Fu Mahjong & Cafe — Booking Website: Start Here
 
 A plain-English guide. No coding knowledge assumed. Read top to bottom once,
@@ -18,7 +26,7 @@ then follow the steps.
 
 Think of it like a small restaurant:
 
-- **The website** (`public/index.html`) is the *dining room* — what customers see
+- **The website** (`index.html`) is the *dining room* — what customers see
   and use to book a table. It shows your branches, tables, time slots, prices,
   and the café menu.
 - **The server / "brain"** (`server.js` + `db.js`) is the *kitchen* — customers
@@ -80,7 +88,8 @@ Keep the code somewhere safe and treat it like a password.
 2. On the repo page, click **Add file → Upload files**.
 3. Upload **all** the files I gave you:
    `server.js`, `db.js`, `package.json`, `.gitignore`, `README.md`,
-   and the whole `public` folder (which contains `index.html` and `fufu-logo.png`).
+   including `index.html` and `fufu-logo.png`. There are **no folders** in this
+   version — just select every file and upload them together.
    - **Do NOT upload** your `.env` file or any `data` folder. (`.gitignore` already
      protects these, but just don't upload them.)
 4. Click **Commit changes**.
@@ -133,7 +142,7 @@ Decide this before you advertise the site to customers.
 
 ## 8. Changing your details later (prices, tables, menu, WhatsApp number)
 
-All your settings sit at the **top** of `public/index.html`, clearly labelled.
+All your settings sit at the **top** of `index.html`, clearly labelled.
 Edit that file on GitHub (open it → pencil icon → edit → Commit), and Render updates
 the site automatically in a minute or two. What you can change there:
 
@@ -145,7 +154,7 @@ the site automatically in a minute or two. What you can change there:
 - **`ADDONS`** — the café menu items and prices.
 
 (The file `reservasi.jsx` is only the preview you saw in our chat — the *live* site
-is `public/index.html`. Edit the one in `public`.)
+is `index.html`.)
 
 ---
 
