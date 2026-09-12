@@ -39,6 +39,7 @@ const {
   BANK_ACCOUNT = "",          // nomor rekening tujuan transfer
   BANK_HOLDER = "",           // nama pemilik rekening
   ADMIN_KEY = "",
+  FONNTE_TOKEN = "",          // token dari fonnte.com (WhatsApp otomatis)
   PORT = 3001,
 } = process.env;
 
@@ -217,6 +218,58 @@ async function sendEmail({ to, subject, html }) {
 }
 const safeSend = (opts) => sendEmail(opts).catch((err) => console.error("[email] error:", err.message));
 
+// --- WhatsApp (Fonnte) -----------------------------------------------------
+function waNumber(phone) {
+  const p = String(phone || "").replace(/\D/g, "").replace(/^0/, "62");
+  return p || null;
+}
+async function sendWhatsApp(phone, message) {
+  if (!FONNTE_TOKEN) { console.warn("[wa] FONNTE_TOKEN belum diset — WhatsApp dilewati."); return { skipped: true }; }
+  const target = waNumber(phone);
+  if (!target) return { skipped: true };
+  const r = await fetch("https://api.fonnte.com/send", {
+    method: "POST",
+    headers: { Authorization: FONNTE_TOKEN, "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ target, message }).toString(),
+  });
+  if (!r.ok) throw new Error(`Fonnte ${r.status}: ${await r.text()}`);
+  return r.json();
+}
+const safeWA = (phone, message) => sendWhatsApp(phone, message).catch((err) => console.error("[wa] error:", err.message));
+
+function waBookingText(b) {
+  const jam = (b.slots || []).join(", ");
+  const lines = [
+    `Halo ${b.name}! Reservasi kamu di ${BUSINESS_NAME} sudah kami terima.`,
+    ``,
+    `Kode: ${b.code}`,
+    `Cabang: ${b.branch}`,
+    `Meja: ${b.table}`,
+    `Tanggal: ${formatDateID(b.date)}`,
+    `Jam: ${jam}`,
+    ``,
+    `Silakan transfer NOMINAL TEPAT:`,
+    `${BANK_NAME} ${BANK_ACCOUNT} a.n. ${BANK_HOLDER}`,
+    `Jumlah: ${rupiah(b.payable)} (termasuk kode unik ${b.uniqueCode})`,
+    ``,
+    `Meja ditahan 15 menit. Setelah transfer, balas chat ini dengan bukti transfer ya. Terima kasih! 🀄`,
+  ];
+  return lines.join("\n");
+}
+function waPaidText(b) {
+  const jam = (b.slots || []).join(", ");
+  return [
+    `Pembayaran diterima ✅ Reservasi kamu di ${BUSINESS_NAME} sudah TERKONFIRMASI.`,
+    ``,
+    `Kode: ${b.code}`,
+    `Meja: ${b.table}`,
+    `Tanggal: ${formatDateID(b.date)}`,
+    `Jam: ${jam}`,
+    ``,
+    `Sampai jumpa di meja! 🀄`,
+  ].join("\n");
+}
+
 function requireAdmin(req, res) {
   if (!ADMIN_KEY || (req.query.key !== ADMIN_KEY && req.get("x-admin-key") !== ADMIN_KEY)) {
     res.status(401).json({ ok: false, error: "unauthorized" });
@@ -260,6 +313,7 @@ app.post("/api/reservations", async (req, res) => {
 
   if (body.email) safeSend({ to: body.email, subject: `Reservasi ${code} — ${BUSINESS_NAME}`, html: buildBookingHTML(full) });
   if (ownerInbox) safeSend({ to: ownerInbox, subject: `📅 Booking baru: ${body.table} · ${body.date} (${code})`, html: buildOwnerHTML(full, "pending") });
+  safeWA(body.phone, waBookingText(full));
 });
 
 app.get("/api/reservations", (req, res) => {
@@ -281,6 +335,7 @@ app.post("/api/reservations/:code/pay", (req, res) => {
   };
   if (booking.email) safeSend({ to: booking.email, subject: `Invoice ${booking.code} — ${BUSINESS_NAME}`, html: buildInvoiceHTML(forEmail) });
   if (ownerInbox) safeSend({ to: ownerInbox, subject: `✅ Lunas: ${booking.table_name} (${booking.code})`, html: buildOwnerHTML(forEmail, "paid") });
+  safeWA(booking.phone, waPaidText(forEmail));
 
   res.json({ ok: true });
 });
