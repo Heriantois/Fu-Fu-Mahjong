@@ -1,12 +1,13 @@
 // ---------------------------------------------------------------------------
-// Reservasi backend — email + database + real availability
+// Reservasi backend — Fu Fu Mahjong & Cafe
 //
-//   GET  /api/availability?branch=&table=&date=   -> hours already booked
-//   POST /api/reservations                         -> create booking (atomic)
-//   GET  /api/reservations?key=ADMIN_KEY           -> owner: list bookings
-//   POST /api/reservations/:code/pay?key=ADMIN_KEY -> owner: mark as paid
-//
-// Needs Node 18+. Setup in README.md.
+//   GET  /                         -> website (index.html)
+//   GET  /admin                    -> owner dashboard (admin.html)
+//   GET  /api/availability         -> hours already booked
+//   POST /api/reservations         -> create booking (atomic + unique amount)
+//   GET  /api/reservations?key=    -> owner: list bookings
+//   POST /api/reservations/:code/pay?key=    -> owner: mark paid (sends invoice)
+//   POST /api/reservations/:code/cancel?key= -> owner: cancel + free slots
 // ---------------------------------------------------------------------------
 
 import "dotenv/config";
@@ -15,7 +16,9 @@ import cors from "cors";
 import nodemailer from "nodemailer";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { getBookedHours, createReservation, markPaid, listReservations } from "./db.js";
+import {
+  getBookedHours, createReservation, markPaid, markCancelled, listReservations,
+} from "./db.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -24,23 +27,24 @@ app.use(cors());
 app.use(express.json());
 
 const {
-  SMTP_HOST = "smtp.gmail.com",   // ganti kalau email pawsly.id bukan di Google
+  SMTP_HOST = "smtp.gmail.com",
   SMTP_PORT = 465,
-  SMTP_USER,                       // alamat pengirim, mis admin@pawsly.id
-  SMTP_PASS,                       // App Password / password SMTP
-  FROM_EMAIL,                      // opsional; default = SMTP_USER
-  OWNER_EMAIL,                     // inbox notifikasi pemilik
+  SMTP_USER,
+  SMTP_PASS,
+  RESEND_API_KEY,
+  FROM_EMAIL,
+  OWNER_EMAIL,
   BUSINESS_NAME = "Fu Fu Mahjong & Cafe",
+  BANK_NAME = "BCA",
+  BANK_ACCOUNT = "",          // nomor rekening tujuan transfer
+  BANK_HOLDER = "",           // nama pemilik rekening
   ADMIN_KEY = "",
   PORT = 3001,
 } = process.env;
 
 const fromEmail = FROM_EMAIL || SMTP_USER;
-// Inbox pemilik untuk notifikasi booking baru (default: alamat pengirim).
 const ownerInbox = OWNER_EMAIL || SMTP_USER;
 
-// Kirim email via SMTP. Default Gmail/Google Workspace; ganti SMTP_HOST/PORT
-// kalau email pawsly.id ada di provider lain (Zoho, Titan, cPanel, dll).
 const mailer = (SMTP_USER && SMTP_PASS)
   ? nodemailer.createTransport({
       host: SMTP_HOST,
@@ -53,6 +57,16 @@ const mailer = (SMTP_USER && SMTP_PASS)
     })
   : null;
 
+// Peraturan bermain (muncul di email invoice). Silakan edit sesuai kebutuhan.
+const HOUSE_RULES = [
+  "Reservasi berlaku untuk 1 meja (maksimal 4 pemain).",
+  "Mohon datang tepat waktu. Meja ditahan maksimal 15 menit dari jam mulai.",
+  "Waktu sewa dihitung per jam sesuai reservasi; perpanjangan tergantung ketersediaan.",
+  "Jaga kebersihan meja dan kelengkapan set mahjong. Kerusakan atau kehilangan menjadi tanggung jawab penyewa.",
+  "Dilarang membawa makanan/minuman dari luar; silakan pesan dari menu kafe.",
+  "Mohon menjaga ketenangan dan kenyamanan bersama pengunjung lain.",
+];
+
 // --- helpers ---------------------------------------------------------------
 
 const rupiah = (n) => "Rp" + Number(n || 0).toLocaleString("id-ID");
@@ -64,9 +78,10 @@ function formatDateID(iso) {
     });
   } catch { return iso; }
 }
-
-function genCode() {
-  return "FUFU-" + Math.random().toString(36).slice(2, 8).toUpperCase();
+function genCode() { return "FUFU-" + Math.random().toString(36).slice(2, 8).toUpperCase(); }
+function waLink(phone) {
+  const p = String(phone || "").replace(/\D/g, "").replace(/^0/, "62");
+  return p ? `https://wa.me/${p}` : null;
 }
 
 function validate(b) {
@@ -80,118 +95,130 @@ function validate(b) {
   return errors;
 }
 
-function buildEmailHTML(b) {
+function detailRows(b) {
   const jam = (b.slots || []).join(", ") + (b.duration ? ` (${b.duration} jam)` : "");
-  const rows = [
+  return [
     ["Kode reservasi", b.code],
     ["Cabang", b.branch],
     ["Meja", b.table],
     ["Tanggal", formatDateID(b.date)],
     ["Jam", jam],
     ["Nama", b.name],
-    b.players ? ["Jumlah pemain", `${b.players} orang`] : null,
     ...(b.addons || []).map((a) => [`${a.name} ×${a.qty}`, rupiah(a.qty * a.price)]),
     b.notes ? ["Catatan", b.notes] : null,
-    ["Total bayar", rupiah(b.total)],
   ].filter(Boolean);
-
-  const rowsHTML = rows.map(([k, v]) => `
+}
+function rowsToHTML(rows) {
+  return rows.map(([k, v]) => `
     <tr>
       <td style="padding:9px 0;color:#6b6459;font-size:14px;">${k}</td>
       <td style="padding:9px 0;color:#1c1a16;font-size:14px;font-weight:600;text-align:right;">${v}</td>
     </tr>`).join("");
-
-  return `
-  <div style="background:#faf6ec;padding:28px 16px;font-family:Arial,Helvetica,sans-serif;">
-    <div style="max-width:520px;margin:0 auto;background:#fffdf7;border:1px solid #e8e0cf;border-radius:16px;overflow:hidden;">
-      <div style="background:#146c54;padding:22px 24px;">
-        <div style="color:#fff;font-size:18px;font-weight:700;">${BUSINESS_NAME}</div>
-        <div style="color:#cdeee0;font-size:13px;margin-top:2px;">Reservasi diterima</div>
-      </div>
-      <div style="padding:24px;">
-        <p style="margin:0 0 6px;font-size:15px;color:#1c1a16;">Halo ${b.name},</p>
-        <p style="margin:0 0 18px;font-size:14px;color:#6b6459;line-height:1.6;">
-          Meja kamu sudah kami tahan. Selesaikan pembayaran di bawah ini untuk mengunci reservasi.
-        </p>
-        <table style="width:100%;border-collapse:collapse;border-top:1px solid #e8e0cf;border-bottom:1px solid #e8e0cf;">
-          ${rowsHTML}
-        </table>
-        <div style="background:#1c1a16;border-radius:12px;padding:16px 18px;margin:20px 0;text-align:center;">
-          <div style="color:#a89f8c;font-size:12px;">BCA Virtual Account</div>
-          <div style="color:#fff;font-size:24px;font-weight:800;letter-spacing:1px;margin-top:4px;">${b.va}</div>
-          <div style="color:#cdeee0;font-size:13px;margin-top:8px;">Total: <b>${rupiah(b.total)}</b></div>
-        </div>
-        <p style="margin:0;font-size:13px;color:#6b6459;line-height:1.6;">
-          Cara bayar: buka <b>BCA Mobile / m-BCA</b> &rarr; <b>m-Transfer</b> &rarr;
-          <b>BCA Virtual Account</b> &rarr; masukkan nomor di atas.
-        </p>
-      </div>
+}
+function shell(inner) {
+  return `<div style="background:#faf6ec;padding:28px 16px;font-family:Arial,Helvetica,sans-serif;">
+    <div style="max-width:540px;margin:0 auto;background:#fffdf7;border:1px solid #e8e0cf;border-radius:16px;overflow:hidden;">
+      ${inner}
     </div>
-    <p style="max-width:520px;margin:14px auto 0;font-size:11px;color:#a89f8c;text-align:center;">
-      Email otomatis. Balas email ini kalau ada pertanyaan.
+    <p style="max-width:540px;margin:14px auto 0;font-size:11px;color:#a89f8c;text-align:center;">
+      Email otomatis dari ${BUSINESS_NAME}.
     </p>
   </div>`;
 }
 
-function waLink(phone) {
-  const p = String(phone || "").replace(/\D/g, "").replace(/^0/, "62");
-  return p ? `https://wa.me/${p}` : null;
+// "Please pay" confirmation, sent at booking time.
+function buildBookingHTML(b) {
+  const rows = detailRows(b).concat([["Total", rupiah(b.total)]]);
+  return shell(`
+    <div style="background:#146c54;padding:22px 24px;">
+      <div style="color:#fff;font-size:18px;font-weight:700;">${BUSINESS_NAME}</div>
+      <div style="color:#cdeee0;font-size:13px;margin-top:2px;">Reservasi diterima — menunggu pembayaran</div>
+    </div>
+    <div style="padding:24px;">
+      <p style="margin:0 0 6px;font-size:15px;">Halo ${b.name},</p>
+      <p style="margin:0 0 18px;font-size:14px;color:#6b6459;line-height:1.6;">
+        Meja kamu ditahan selama 15 menit. Selesaikan transfer dengan nominal <b>tepat</b>
+        di bawah ini supaya kami bisa mencocokkan pembayaranmu otomatis.
+      </p>
+      <table style="width:100%;border-collapse:collapse;border-top:1px solid #e8e0cf;">${rowsToHTML(rows)}</table>
+      <div style="background:#1c1a16;border-radius:12px;padding:18px;margin:20px 0;text-align:center;color:#fff;">
+        <div style="font-size:12px;opacity:.7;">Transfer ke ${BANK_NAME}</div>
+        <div style="font-size:22px;font-weight:800;letter-spacing:1px;margin-top:4px;">${BANK_ACCOUNT || "(atur nomor rekening)"}</div>
+        <div style="font-size:13px;opacity:.85;margin-top:2px;">a.n. ${BANK_HOLDER || "(atur nama rekening)"}</div>
+        <div style="margin-top:14px;font-size:12px;opacity:.7;">Nominal tepat (termasuk kode unik)</div>
+        <div style="font-size:26px;font-weight:800;color:#e8c25a;">${rupiah(b.payable)}</div>
+        <div style="font-size:11px;opacity:.7;margin-top:2px;">3 digit terakhir (${b.uniqueCode}) adalah kode unik — jangan dibulatkan.</div>
+      </div>
+      <p style="margin:0;font-size:12.5px;color:#6b6459;line-height:1.6;">
+        Setelah transfer, kirim bukti ke WhatsApp kami. Kalau pembayaran belum masuk dalam
+        15 menit, meja otomatis dilepas dan bisa dipesan orang lain.
+      </p>
+    </div>`);
 }
 
-// Short internal alert to the owner for every new booking.
-function buildOwnerHTML(b) {
-  const jam = (b.slots || []).join(", ") + (b.duration ? ` (${b.duration} jam)` : "");
-  const addonsLine = (b.addons || []).map((a) => `${a.name} ×${a.qty}`).join(", ") || "—";
-  const wa = waLink(b.phone);
-  const rows = [
-    ["Kode", b.code],
-    ["Cabang", b.branch],
-    ["Meja", b.table],
-    ["Tanggal", formatDateID(b.date)],
-    ["Jam", jam],
-    ["Pemain", b.players ? `${b.players} orang` : "—"],
-    ["Menu tambahan", addonsLine],
-    ["Nama", b.name],
+// Invoice, sent when the owner marks the booking paid.
+function buildInvoiceHTML(b) {
+  const rows = detailRows(b).concat([["Total dibayar", rupiah(b.payable || b.total)]]);
+  const rulesHTML = HOUSE_RULES.map((r) => `<li style="margin-bottom:6px;">${r}</li>`).join("");
+  return shell(`
+    <div style="background:#146c54;padding:22px 24px;">
+      <div style="color:#fff;font-size:18px;font-weight:700;">${BUSINESS_NAME}</div>
+      <div style="color:#cdeee0;font-size:13px;margin-top:2px;">Invoice — Pembayaran diterima ✓</div>
+    </div>
+    <div style="padding:24px;">
+      <p style="margin:0 0 6px;font-size:15px;">Halo ${b.name},</p>
+      <p style="margin:0 0 18px;font-size:14px;color:#6b6459;line-height:1.6;">
+        Terima kasih! Pembayaranmu sudah kami terima dan reservasi kamu <b>terkonfirmasi</b>.
+        Ini invoice sekaligus bukti reservasimu.
+      </p>
+      <table style="width:100%;border-collapse:collapse;border-top:1px solid #e8e0cf;border-bottom:1px solid #e8e0cf;">${rowsToHTML(rows)}</table>
+      <div style="margin-top:22px;">
+        <div style="font-size:14px;font-weight:700;color:#146c54;margin-bottom:8px;">Peraturan Bermain</div>
+        <ol style="margin:0;padding-left:18px;font-size:13px;color:#3f463f;line-height:1.6;">${rulesHTML}</ol>
+      </div>
+      <p style="margin:18px 0 0;font-size:13px;color:#6b6459;">Sampai jumpa di meja! 🀄</p>
+    </div>`);
+}
+
+function buildOwnerHTML(b, kind) {
+  const rows = detailRows(b).concat([
     ["WhatsApp", b.phone],
     ["Email", b.email || "—"],
-    ["Total", rupiah(b.total)],
-    ["Status", "Menunggu pembayaran"],
-  ];
-  const rowsHTML = rows.map(([k, v]) => `
-    <tr>
-      <td style="padding:7px 0;color:#6b6459;font-size:13px;">${k}</td>
-      <td style="padding:7px 0;color:#1c1a16;font-size:13px;font-weight:600;text-align:right;">${v}</td>
-    </tr>`).join("");
-
-  return `
-  <div style="background:#faf6ec;padding:24px 16px;font-family:Arial,Helvetica,sans-serif;">
-    <div style="max-width:480px;margin:0 auto;background:#fffdf7;border:1px solid #e8e0cf;border-radius:14px;overflow:hidden;">
-      <div style="background:#146c54;padding:16px 20px;color:#fff;font-size:16px;font-weight:700;">
-        Booking baru masuk
-      </div>
-      <div style="padding:18px 20px;">
-        <table style="width:100%;border-collapse:collapse;">${rowsHTML}</table>
-        ${wa ? `<a href="${wa}" style="display:inline-block;margin-top:16px;background:#146c54;color:#fff;text-decoration:none;font-size:13px;font-weight:700;padding:10px 16px;border-radius:9px;">Chat pelanggan di WhatsApp</a>` : ""}
-      </div>
+    ["Nominal", rupiah(b.payable)],
+    ["Status", kind === "paid" ? "LUNAS" : "Menunggu pembayaran"],
+  ]);
+  const wa = waLink(b.phone);
+  return shell(`
+    <div style="background:#146c54;padding:16px 20px;color:#fff;font-size:16px;font-weight:700;">
+      ${kind === "paid" ? "Pembayaran diterima" : "Booking baru masuk"}
     </div>
-  </div>`;
+    <div style="padding:18px 20px;">
+      <table style="width:100%;border-collapse:collapse;">${rowsToHTML(rows)}</table>
+      ${wa ? `<a href="${wa}" style="display:inline-block;margin-top:16px;background:#146c54;color:#fff;text-decoration:none;font-size:13px;font-weight:700;padding:10px 16px;border-radius:9px;">Chat pelanggan di WhatsApp</a>` : ""}
+    </div>`);
 }
 
 async function sendEmail({ to, subject, html }) {
-  if (!mailer) {
-    console.warn("[email] SMTP_USER / SMTP_PASS belum diset — email dilewati (mode dev).");
-    return { skipped: true };
+  // Prefer the HTTPS email API (Resend) when configured — it works even where
+  // the host blocks SMTP ports (which is what "Connection timeout" means).
+  if (RESEND_API_KEY) {
+    const from = `${BUSINESS_NAME} <${fromEmail || "onboarding@resend.dev"}>`;
+    const r = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ from, to, subject, html }),
+    });
+    if (!r.ok) throw new Error(`Resend ${r.status}: ${await r.text()}`);
+    return r.json();
   }
-  return mailer.sendMail({
-    from: `${BUSINESS_NAME} <${fromEmail}>`,
-    to,
-    subject,
-    html,
-  });
+  if (mailer) return mailer.sendMail({ from: `${BUSINESS_NAME} <${fromEmail}>`, to, subject, html });
+  console.warn("[email] belum ada RESEND_API_KEY / SMTP — email dilewati.");
+  return { skipped: true };
 }
+const safeSend = (opts) => sendEmail(opts).catch((err) => console.error("[email] error:", err.message));
 
 function requireAdmin(req, res) {
-  if (!ADMIN_KEY || req.query.key !== ADMIN_KEY) {
+  if (!ADMIN_KEY || (req.query.key !== ADMIN_KEY && req.get("x-admin-key") !== ADMIN_KEY)) {
     res.status(401).json({ ok: false, error: "unauthorized" });
     return false;
   }
@@ -201,19 +228,16 @@ function requireAdmin(req, res) {
 // --- routes ----------------------------------------------------------------
 
 app.get("/health", (_req, res) => res.send("Reservasi backend jalan ✅"));
-
-// Sajikan website (versi flat: file ada di folder yang sama dengan server.js)
 app.get("/", (_req, res) => res.sendFile(path.join(__dirname, "index.html")));
+app.get("/admin", (_req, res) => res.sendFile(path.join(__dirname, "admin.html")));
 app.get("/fufu-logo.png", (_req, res) => res.sendFile(path.join(__dirname, "fufu-logo.png")));
 
-// Slots already taken for a table on a date.
 app.get("/api/availability", (req, res) => {
   const { branch, table, date } = req.query;
   if (!branch || !table || !date) return res.status(400).json({ ok: false, error: "branch, table, date wajib" });
   res.json({ ok: true, bookedHours: getBookedHours(branch, table, date) });
 });
 
-// Create a booking (atomic — no double-booking).
 app.post("/api/reservations", async (req, res) => {
   const body = req.body || {};
   const problems = validate(body);
@@ -221,46 +245,49 @@ app.post("/api/reservations", async (req, res) => {
 
   const code = genCode();
   const result = createReservation({ ...body, code });
+  if (!result.ok) return res.status(409).json({ ok: false, conflict: result.conflict || [] });
 
-  if (!result.ok) {
-    // Someone grabbed one of these hours first.
-    return res.status(409).json({ ok: false, conflict: result.conflict || [] });
-  }
+  const full = { ...body, code, payable: result.payable, uniqueCode: result.uniqueCode };
+  console.log(`[reservasi] ${code} @ ${body.branch} · ${body.table} ${body.date} [${(body.hours || []).join(",")}] = ${rupiah(result.payable)}`);
 
-  console.log(`[reservasi] ${code} @ ${body.branch} · ${body.table} ${body.date} [${(body.hours || []).join(",")}]`);
+  // Answer the browser immediately, then email in the background.
+  res.json({
+    ok: true, code,
+    total: body.total, payable: result.payable, uniqueCode: result.uniqueCode,
+    bankName: BANK_NAME, bankAccount: BANK_ACCOUNT, bankHolder: BANK_HOLDER,
+    expiresAt: result.expiresAt,
+  });
 
-  // Jawab browser SEKARANG — jangan menunggu email selesai terkirim.
-  res.json({ ok: true, code, va: body.va, expiresAt: result.expiresAt });
-
-  // Kirim email di belakang layar (fire-and-forget). Kalau lambat/gagal,
-  // pelanggan tetap sudah dapat halaman pembayaran; error hanya masuk log.
-  const safeSend = (opts) => sendEmail(opts).catch((err) => console.error("[email] error:", err.message));
-  if (body.email) {
-    safeSend({
-      to: body.email,
-      subject: `Reservasi ${code} — ${BUSINESS_NAME}`,
-      html: buildEmailHTML({ ...body, code }),
-    });
-  }
-  if (ownerInbox) {
-    safeSend({
-      to: ownerInbox,
-      subject: `📅 Booking baru: ${body.table} · ${body.date} (${code})`,
-      html: buildOwnerHTML({ ...body, code }),
-    });
-  }
+  if (body.email) safeSend({ to: body.email, subject: `Reservasi ${code} — ${BUSINESS_NAME}`, html: buildBookingHTML(full) });
+  if (ownerInbox) safeSend({ to: ownerInbox, subject: `📅 Booking baru: ${body.table} · ${body.date} (${code})`, html: buildOwnerHTML(full, "pending") });
 });
 
-// Owner: list recent bookings.
 app.get("/api/reservations", (req, res) => {
   if (!requireAdmin(req, res)) return;
-  res.json({ ok: true, reservations: listReservations(100) });
+  res.json({ ok: true, reservations: listReservations(200) });
 });
 
-// Owner: mark a booking as paid.
 app.post("/api/reservations/:code/pay", (req, res) => {
   if (!requireAdmin(req, res)) return;
-  const ok = markPaid(req.params.code);
+  const booking = markPaid(req.params.code);
+  if (!booking) return res.json({ ok: false, error: "tidak ditemukan / bukan pending" });
+
+  const forEmail = {
+    code: booking.code, branch: booking.branch_name, table: booking.table_name,
+    date: booking.date, slots: (booking.hours || []).map((h) => `${String(h).padStart(2, "0")}:00`),
+    duration: (booking.hours || []).length, name: booking.name, phone: booking.phone,
+    email: booking.email, addons: booking.addons, notes: booking.notes,
+    total: booking.total, payable: booking.payable,
+  };
+  if (booking.email) safeSend({ to: booking.email, subject: `Invoice ${booking.code} — ${BUSINESS_NAME}`, html: buildInvoiceHTML(forEmail) });
+  if (ownerInbox) safeSend({ to: ownerInbox, subject: `✅ Lunas: ${booking.table_name} (${booking.code})`, html: buildOwnerHTML(forEmail, "paid") });
+
+  res.json({ ok: true });
+});
+
+app.post("/api/reservations/:code/cancel", (req, res) => {
+  if (!requireAdmin(req, res)) return;
+  const ok = markCancelled(req.params.code);
   res.json({ ok });
 });
 

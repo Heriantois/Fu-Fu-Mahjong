@@ -114,6 +114,9 @@ Keep the code somewhere safe and treat it like a password.
    | `SMTP_PASS` | *(the password from Step 4)* |
    | `OWNER_EMAIL` | admin@pawsly.id |
    | `BUSINESS_NAME` | Fu Fu Mahjong & Cafe |
+   | `BANK_NAME` | BCA |
+   | `BANK_ACCOUNT` | *(your BCA account number)* |
+   | `BANK_HOLDER` | *(name on the account)* |
    | `ADMIN_KEY` | *(make up a long random password, e.g. `fufu-7hK2p9Wq`)* |
 
 5. Click **Create Web Service** and wait a few minutes. When it's done, Render gives

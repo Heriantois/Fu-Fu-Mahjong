@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Admin — Fu Fu Mahjong & Cafe</title>
+<style>
+  :root{--ink:#1c1a16;--paper:#faf6ec;--card:#fffdf7;--brand:#146c54;--line:#e8e0cf;--muted:#6b6459;--red:#b23a34;--gold:#c2963a;}
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:'Plus Jakarta Sans',system-ui,-apple-system,Arial,sans-serif;}
+  .wrap{max-width:1000px;margin:0 auto;padding:20px 16px 60px;}
+  h1{font-size:20px;margin:0 0 2px;}
+  .sub{color:var(--muted);font-size:13px;margin-bottom:18px;}
+  .login{max-width:360px;margin:60px auto;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px;}
+  input{width:100%;box-sizing:border-box;font:inherit;font-size:15px;padding:11px 13px;border:1px solid var(--line);border-radius:10px;background:#fff;}
+  input:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px rgba(20,108,84,.12);}
+  .btn{font:inherit;font-weight:700;cursor:pointer;border:1px solid transparent;border-radius:9px;padding:9px 14px;}
+  .btn.primary{background:var(--brand);color:#fff;}
+  .btn.primary:hover{background:#0f5642;}
+  .btn.ghost{background:#fff;border-color:var(--line);color:var(--ink);}
+  .btn.ghost:hover{border-color:#cbbf9f;}
+  .btn.danger{background:#fff;border-color:#e6c3bf;color:var(--red);}
+  .btn.small{font-size:12.5px;padding:6px 10px;}
+  .bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:14px;}
+  .bar .sp{flex:1;}
+  .pills{display:flex;gap:6px;}
+  .pill{font-size:12.5px;font-weight:600;padding:6px 12px;border:1px solid var(--line);border-radius:999px;background:#fff;cursor:pointer;color:var(--muted);}
+  .pill.on{background:var(--brand);border-color:var(--brand);color:#fff;}
+  table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;}
+  th,td{text-align:left;padding:11px 12px;font-size:13px;border-bottom:1px solid var(--line);vertical-align:top;}
+  th{background:#f3efe3;color:var(--muted);font-weight:700;font-size:11.5px;text-transform:uppercase;letter-spacing:.03em;}
+  tr:last-child td{border-bottom:none;}
+  .amt{font-weight:800;font-variant-numeric:tabular-nums;}
+  .code{color:var(--gold);font-weight:800;}
+  .muted{color:var(--muted);}
+  .badge{display:inline-block;font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;}
+  .b-pending{background:#fdf3df;color:#8a6d1e;}
+  .b-paid{background:#e7f4ed;color:#146c54;}
+  .b-expired{background:#efece3;color:#8a847a;}
+  .b-cancelled{background:#fbeceb;color:#b23a34;}
+  .wa{color:var(--brand);text-decoration:none;font-weight:600;}
+  .acts{display:flex;gap:6px;flex-wrap:wrap;}
+  .empty{text-align:center;color:var(--muted);padding:40px;}
+  .err{color:var(--red);font-size:13px;margin-top:10px;}
+  @media(max-width:720px){ table,thead,tbody,th,td,tr{display:block;} thead{display:none;}
+    tr{border:1px solid var(--line);border-radius:12px;margin-bottom:10px;background:var(--card);padding:6px 4px;}
+    td{border:none;padding:6px 12px;} td::before{content:attr(data-l);color:var(--muted);font-size:11px;display:block;font-weight:700;text-transform:uppercase;} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div id="login" class="login">
+    <h1>Admin Fu Fu</h1>
+    <div class="sub">Masukkan kunci admin (ADMIN_KEY).</div>
+    <input id="key" type="password" placeholder="ADMIN_KEY" />
+    <button class="btn primary" style="width:100%;margin-top:12px;" onclick="login()">Masuk</button>
+    <div id="loginErr" class="err"></div>
+  </div>
+
+  <div id="dash" style="display:none;">
+    <h1>Daftar Reservasi</h1>
+    <div class="sub" id="counts"></div>
+    <div class="bar">
+      <div class="pills">
+        <span class="pill on" data-f="all" onclick="setFilter('all',this)">Semua</span>
+        <span class="pill" data-f="pending" onclick="setFilter('pending',this)">Menunggu</span>
+        <span class="pill" data-f="paid" onclick="setFilter('paid',this)">Lunas</span>
+      </div>
+      <div class="sp"></div>
+      <button class="btn ghost small" onclick="load()">↻ Refresh</button>
+      <button class="btn ghost small" onclick="logout()">Keluar</button>
+    </div>
+    <div id="tableWrap"></div>
+  </div>
+</div>
+
+<script>
+  var KEY = sessionStorage.getItem("fufu_admin_key") || "";
+  var FILTER = "all";
+  var DATA = [];
+
+  function rp(n){ return "Rp" + Number(n||0).toLocaleString("id-ID"); }
+  function fmtHours(h){ if(!h) return "-"; return h.split(",").map(function(x){return (x.length<2?"0":"")+x+":00";}).join(", "); }
+  function fmtDate(iso){ try{ return new Date(iso).toLocaleDateString("id-ID",{weekday:"short",day:"numeric",month:"short"});}catch(e){return iso;} }
+  function waHref(p){ p=String(p||"").replace(/\D/g,"").replace(/^0/,"62"); return p?("https://wa.me/"+p):null; }
+
+  async function api(path, opts){
+    opts = opts || {};
+    opts.headers = Object.assign({ "x-admin-key": KEY }, opts.headers||{});
+    var r = await fetch(path, opts);
+    return r;
+  }
+
+  async function login(){
+    KEY = document.getElementById("key").value.trim();
+    var r = await api("/api/reservations");
+    if(r.status === 401){ document.getElementById("loginErr").textContent = "Kunci salah."; return; }
+    sessionStorage.setItem("fufu_admin_key", KEY);
+    showDash(); load();
+  }
+  function logout(){ sessionStorage.removeItem("fufu_admin_key"); KEY=""; location.reload(); }
+  function showDash(){ document.getElementById("login").style.display="none"; document.getElementById("dash").style.display="block"; }
+  function setFilter(f, el){ FILTER=f; document.querySelectorAll(".pill").forEach(function(p){p.classList.remove("on");}); el.classList.add("on"); render(); }
+
+  async function load(){
+    var r = await api("/api/reservations");
+    if(r.status === 401){ logout(); return; }
+    var j = await r.json();
+    DATA = j.reservations || [];
+    render();
+  }
+
+  function render(){
+    var pending = DATA.filter(function(x){return x.status==="pending";}).length;
+    var paid = DATA.filter(function(x){return x.status==="paid";}).length;
+    document.getElementById("counts").textContent = pending+" menunggu pembayaran · "+paid+" lunas · "+DATA.length+" total";
+
+    var rows = DATA.filter(function(x){ return FILTER==="all" ? true : x.status===FILTER; });
+    if(!rows.length){ document.getElementById("tableWrap").innerHTML = '<div class="empty">Belum ada reservasi.</div>'; return; }
+
+    var badge = {pending:["b-pending","Menunggu"],paid:["b-paid","Lunas"],expired:["b-expired","Kadaluarsa"],cancelled:["b-cancelled","Batal"]};
+    var html = '<table><thead><tr>'+
+      '<th>Tanggal</th><th>Jam</th><th>Cabang / Meja</th><th>Pelanggan</th><th>Nominal</th><th>Status</th><th>Aksi</th>'+
+      '</tr></thead><tbody>';
+    rows.forEach(function(x){
+      var b = badge[x.status] || ["b-expired", x.status];
+      var wa = waHref(x.phone);
+      var cust = x.name + '<br><span class="muted">'+(x.phone||"")+'</span>' + (wa?' · <a class="wa" href="'+wa+'" target="_blank">WA</a>':'');
+      var acts = "";
+      if(x.status==="pending"){
+        acts = '<button class="btn primary small" onclick="markPaid(\''+x.code+'\')">Tandai Lunas</button> '+
+               '<button class="btn danger small" onclick="cancelBk(\''+x.code+'\')">Batal</button>';
+      } else if(x.status==="paid"){
+        acts = '<button class="btn danger small" onclick="cancelBk(\''+x.code+'\')">Batal</button>';
+      } else {
+        acts = '<span class="muted">—</span>';
+      }
+      html += '<tr>'+
+        '<td data-l="Tanggal">'+fmtDate(x.date)+'<br><span class="muted">'+x.code+'</span></td>'+
+        '<td data-l="Jam">'+fmtHours(x.hours)+'</td>'+
+        '<td data-l="Cabang / Meja">'+x.branch_name+'<br><span class="muted">'+x.table_name+'</span></td>'+
+        '<td data-l="Pelanggan">'+cust+'</td>'+
+        '<td data-l="Nominal"><span class="amt">'+rp(x.payable)+'</span><br><span class="muted">kode <span class="code">'+(x.unique_code||"-")+'</span></span></td>'+
+        '<td data-l="Status"><span class="badge '+b[0]+'">'+b[1]+'</span></td>'+
+        '<td data-l="Aksi"><div class="acts">'+acts+'</div></td>'+
+      '</tr>';
+    });
+    html += '</tbody></table>';
+    document.getElementById("tableWrap").innerHTML = html;
+  }
+
+  async function markPaid(code){
+    if(!confirm("Tandai "+code+" sebagai LUNAS? Invoice akan dikirim ke pelanggan.")) return;
+    var r = await api("/api/reservations/"+code+"/pay", {method:"POST"});
+    var j = await r.json();
+    if(!j.ok){ alert("Gagal: "+(j.error||"coba lagi")); }
+    load();
+  }
+  async function cancelBk(code){
+    if(!confirm("Batalkan "+code+"? Meja/jam-nya akan dilepas.")) return;
+    await api("/api/reservations/"+code+"/cancel", {method:"POST"});
+    load();
+  }
+
+  // auto-refresh every 30s while viewing
+  setInterval(function(){ if(document.getElementById("dash").style.display!=="none") load(); }, 30000);
+
+  // if we already have a key from this session, go straight in
+  if(KEY){ showDash(); load(); }
+</script>
+</body>
+</html>

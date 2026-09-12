@@ -6,14 +6,10 @@
 <title>Fu Fu Mahjong & Cafe — Reservasi</title>
 <style>html,body{margin:0;padding:0;background:#faf6ec;}</style>
 <script>
-// Kalau ada yang gagal, tampilkan pesan di layar (bukan halaman kosong).
 window.onerror = function (msg) {
   var r = document.getElementById("root");
   if (r && !r.hasChildNodes()) {
-    r.innerHTML =
-      '<div style="font-family:sans-serif;padding:24px;color:#8f2f28;line-height:1.6;max-width:560px;margin:0 auto">'
-      + 'Maaf, halaman gagal dimuat.<br><small>' + msg + '</small><br><br>'
-      + 'Coba <b>refresh</b> halaman ini, atau cek koneksi internet.</div>';
+    r.innerHTML = '<div style="font-family:sans-serif;padding:24px;color:#8f2f28;line-height:1.6;max-width:560px;margin:0 auto">Maaf, halaman gagal dimuat.<br><small>' + msg + '</small><br><br>Coba <b>refresh</b> halaman ini, atau cek koneksi internet.</div>';
   }
 };
 </script>
@@ -25,17 +21,11 @@ window.onerror = function (msg) {
 <script>
 "use strict";
 const { useState, useMemo, useEffect } = React;
-/* ------------------------------------------------------------------
-   EDIT ME: business, branches, tables, pricing, add-ons.
-   NOTE: jumlah meja & harga di bawah masih perkiraan — ganti sesuai
-   kondisi asli Fu Fu Mahjong & Cafe.
------------------------------------------------------------------- */
+/* ============ EDIT ME: business, branches, tables, prices ============ */
 const BUSINESS = {
     name: "Fu Fu Mahjong & Cafe",
     tagline: "Reservasi meja mahjong — pilih cabang, meja & jam",
 };
-// Logo. Untuk produksi, ganti dengan path file, mis src="/fufu-logo.png".
-// Data URI di bawah dipakai supaya preview langsung menampilkan logo.
 const LOGO = "/fufu-logo.png";
 const BRANCHES = [
     {
@@ -43,12 +33,13 @@ const BRANCHES = [
         address: "Ruko Sentra Niaga Blok SG 3 No. 8, Lt. 2, Sinpasa",
         open: 8, close: 22,
         tables: [
-            { id: "gs1", name: "Meja 1", type: "Reguler", mult: 1 },
-            { id: "gs2", name: "Meja 2", type: "Reguler", mult: 1 },
-            { id: "gs3", name: "Meja 3", type: "Reguler", mult: 1 },
-            { id: "gs4", name: "Meja 4", type: "Reguler", mult: 1 },
-            { id: "gs5", name: "Meja 5", type: "Reguler", mult: 1 },
-            { id: "gs6", name: "VIP Room", type: "Ruang privat", mult: 1.6 },
+            { id: "gs1", name: "Meja 1", type: "Reguler" },
+            { id: "gs2", name: "Meja 2", type: "Reguler" },
+            { id: "gs3", name: "Meja 3", type: "Reguler" },
+            { id: "gs4", name: "Meja 4", type: "Reguler" },
+            { id: "gs5", name: "Meja 5", type: "Reguler" },
+            { id: "gs6", name: "Meja 6", type: "Reguler" },
+            { id: "gs7", name: "Meja 7", type: "Reguler" },
         ],
     },
     {
@@ -56,23 +47,36 @@ const BRANCHES = [
         address: "Pulse Padel, BSD",
         open: 8, close: 23,
         tables: [
-            { id: "b1", name: "Meja 1", type: "Reguler", mult: 1 },
-            { id: "b2", name: "Meja 2", type: "Reguler", mult: 1 },
-            { id: "b3", name: "Meja 3", type: "Reguler", mult: 1 },
-            { id: "b4", name: "Meja 4", type: "Reguler", mult: 1 },
+            { id: "b1", name: "Meja Reguler", type: "Reguler" },
+            { id: "b2", name: "VIP 1", type: "VIP" },
+            { id: "b3", name: "VIP 2", type: "VIP" },
+            { id: "b4", name: "VIP 3", type: "VIP" },
+            { id: "b5", name: "VIP 4", type: "VIP" },
         ],
     },
 ];
-// Harga sewa meja per jam (Rupiah). Peak = jam 17:00 ke atas. Weekend lebih mahal.
-// VIP Room otomatis lebih mahal lewat "mult" di atas.
-function baseSlotPrice(hour, weekend) {
-    const peak = hour >= 17;
-    if (weekend)
-        return peak ? 90000 : 60000;
-    return peak ? 75000 : 50000;
+// Tanggal libur nasional (weekend rate berlaku di Gading Serpong).
+// Isi sesuai kalender resmi. Format "YYYY-MM-DD".
+const PUBLIC_HOLIDAYS = [
+    "2026-01-01", // Tahun Baru
+    "2026-08-17", // Hari Kemerdekaan
+    "2026-12-25", // Natal
+    // tambahkan: Idul Fitri, Nyepi, Waisak, dll sesuai penetapan pemerintah
+];
+// Harga sewa meja per jam (Rupiah).
+function isHoliday(iso) { return PUBLIC_HOLIDAYS.indexOf(iso) !== -1; }
+// Gading Serpong: weekend = Jumat, Sabtu, Minggu + libur nasional.
+function isGSWeekend(iso) { const d = new Date(iso).getDay(); return d === 5 || d === 6 || d === 0 || isHoliday(iso); }
+function slotPriceFor(branch, table, iso) {
+    if (branch.id === "bsd")
+        return table.type === "VIP" ? 75000 : 50000;
+    if (branch.id === "gs")
+        return isGSWeekend(iso) ? 60000 : 50000;
+    return 50000;
 }
-function slotPrice(hour, weekend, mult) {
-    return Math.round((baseSlotPrice(hour, weekend) * mult) / 1000) * 1000;
+// Gratis es teh: Gading Serpong, weekday, jam 08:00–14:59.
+function freeIceTea(branch, iso, hour) {
+    return branch.id === "gs" && !isGSWeekend(iso) && hour < 15;
 }
 // Menu tambahan (F&B). Ganti sesuai menu asli.
 const ADDONS = [
@@ -81,44 +85,31 @@ const ADDONS = [
     { id: "snack", name: "Snack Platter", price: 75000, max: 6 },
     { id: "air", name: "Air Mineral", price: 10000, max: 10 },
 ];
-const BCA_COMPANY_CODE = "12345"; // kode perusahaan dari payment gateway (placeholder)
-// ⬇️ GANTI dengan nomor WhatsApp bisnis kamu. Pelanggan pakai ini untuk
-// kirim bukti transfer setelah membayar. Format bebas, mis "0812-3456-7890".
-// Biarkan ada "X" berarti belum diisi (tombol tampil tapi belum aktif).
+// GANTI dengan nomor WhatsApp bisnis (untuk kirim bukti transfer).
 const BUSINESS_WHATSAPP = "08XX-XXXX-XXXX";
-// Kosongkan ("") untuk mode preview (ketersediaan disimulasikan, tanpa email/DB).
-// Isi URL backend untuk pakai database + email asli, mis "http://localhost:3001".
-const API_BASE = "";
+const API_BASE = ""; // website & server jadi satu (same origin)
 const STEPS = ["Cabang", "Jadwal", "Detail", "Konfirmasi"];
-/* ------------------------------------------------------------------ */
-// Simulasi ketersediaan untuk MODE PREVIEW saja (saat API_BASE kosong).
-// Kalau backend tersambung, ketersediaan asli diambil dari database.
-function simBooked(tableId, date, hour) {
-    const s = `${tableId}|${date}|${hour}`;
-    let h = 0;
-    for (let i = 0; i < s.length; i++)
-        h = (h * 31 + s.charCodeAt(i)) >>> 0;
-    return h % 6 === 0;
-}
+/* ===================================================================== */
 const rupiah = (n) => "Rp" + n.toLocaleString("id-ID");
 const shortRp = (n) => (n / 1000).toLocaleString("id-ID") + "rb";
 const hhmm = (h) => `${String(h).padStart(2, "0")}:00`;
 function todayISO() { return new Date().toISOString().slice(0, 10); }
-function isWeekend(iso) { const d = new Date(iso).getDay(); return d === 0 || d === 6; }
 function waLink(phone) {
-    if (!phone || phone.includes("X"))
-        return null; // belum diisi
+    if (!phone || phone.indexOf("X") !== -1)
+        return null;
     const p = phone.replace(/\D/g, "").replace(/^0/, "62");
     return p ? `https://wa.me/${p}` : null;
 }
+function mmss(sec) {
+    if (sec < 0)
+        sec = 0;
+    const m = Math.floor(sec / 60), s = sec % 60;
+    return `${m}:${String(s).padStart(2, "0")}`;
+}
 const styles = `
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
-.rv-root{
-  --ink:#1c1a16;--paper:#faf6ec;--card:#fffdf7;--brand:#146c54;--brand-dark:#0f5642;
-  --accent:#c2963a;--red:#b23a34;--line:#e8e0cf;--muted:#6b6459;--danger:#b23a34;
-  font-family:'Plus Jakarta Sans',system-ui,-apple-system,sans-serif;color:var(--ink);
-  background:var(--paper);min-height:100vh;padding:28px 16px 64px;-webkit-font-smoothing:antialiased;
-}
+.rv-root{--ink:#1c1a16;--paper:#faf6ec;--card:#fffdf7;--brand:#146c54;--brand-dark:#0f5642;--accent:#c2963a;--red:#b23a34;--line:#e8e0cf;--muted:#6b6459;--danger:#b23a34;
+  font-family:'Plus Jakarta Sans',system-ui,-apple-system,sans-serif;color:var(--ink);background:var(--paper);min-height:100vh;padding:28px 16px 64px;-webkit-font-smoothing:antialiased;}
 .rv-shell{max-width:560px;margin:0 auto;}
 .rv-head{margin-bottom:22px;text-align:center;}
 .rv-logo{height:104px;width:auto;display:block;margin:0 auto 2px;}
@@ -132,12 +123,9 @@ const styles = `
 .rv-card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px;}
 .rv-h{font-size:17px;font-weight:700;letter-spacing:-.01em;margin:0 0 4px;}
 .rv-sub{color:var(--muted);font-size:13.5px;margin:0 0 18px;}
-.rv-branch{display:flex;align-items:flex-start;gap:12px;width:100%;text-align:left;cursor:pointer;
-  border:1px solid var(--line);border-left:3px solid var(--line);background:#fff;border-radius:12px;
-  padding:14px 16px;margin-bottom:10px;transition:border-color .18s,background .18s;}
+.rv-branch{display:flex;align-items:flex-start;gap:12px;width:100%;text-align:left;cursor:pointer;border:1px solid var(--line);border-left:3px solid var(--line);background:#fff;border-radius:12px;padding:14px 16px;margin-bottom:10px;transition:border-color .18s,background .18s;}
 .rv-branch:hover{border-color:#d3c8ad;}
 .rv-branch.sel{border-color:var(--brand);border-left-color:var(--brand);background:#f1f8f4;}
-.rv-branch:focus-visible{outline:2px solid var(--brand);outline-offset:2px;}
 .rv-branch-name{font-weight:700;font-size:14.5px;}
 .rv-branch-meta{color:var(--muted);font-size:12.5px;margin-top:3px;line-height:1.5;}
 .rv-radio{width:18px;height:18px;border-radius:50%;border:2px solid #cdc1a4;margin-top:2px;flex:none;display:grid;place-items:center;}
@@ -148,28 +136,26 @@ const styles = `
 .rv-opt{color:var(--muted);font-weight:500;}
 .rv-field{margin-bottom:16px;}
 .rv-pills{display:flex;flex-wrap:wrap;gap:8px;}
-.rv-pill{font:inherit;font-size:13px;font-weight:600;padding:9px 14px;border:1px solid var(--line);
-  border-radius:999px;background:#fff;color:var(--ink);cursor:pointer;transition:all .15s;}
+.rv-pill{font:inherit;font-size:13px;font-weight:600;padding:9px 14px;border:1px solid var(--line);border-radius:999px;background:#fff;color:var(--ink);cursor:pointer;transition:all .15s;}
 .rv-pill:hover{border-color:#d3c8ad;}
 .rv-pill.sel{background:var(--brand);border-color:var(--brand);color:#fff;}
 .rv-pill small{display:block;font-weight:500;font-size:10.5px;opacity:.85;margin-top:1px;}
-.rv-input,.rv-select{width:100%;box-sizing:border-box;font:inherit;font-size:14.5px;padding:11px 13px;
-  border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);transition:border-color .15s,box-shadow .15s;}
+.rv-input,.rv-select{width:100%;box-sizing:border-box;font:inherit;font-size:14.5px;padding:11px 13px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);transition:border-color .15s,box-shadow .15s;}
 .rv-input:focus,.rv-select:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px rgba(20,108,84,.12);}
 .rv-input.err{border-color:var(--danger);}
 .rv-errmsg{color:var(--danger);font-size:12px;margin-top:6px;}
 .rv-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
-.rv-slot{font:inherit;border:1px solid var(--line);border-radius:10px;background:#fff;cursor:pointer;
-  padding:9px 4px;text-align:center;transition:all .15s;line-height:1.25;}
+.rv-slot{font:inherit;border:1px solid var(--line);border-radius:10px;background:#fff;cursor:pointer;padding:9px 4px;text-align:center;transition:all .15s;line-height:1.25;}
 .rv-slot:hover:not(.bk){border-color:#d3c8ad;}
 .rv-slot .t{font-size:13.5px;font-weight:700;}
 .rv-slot .p{font-size:11px;color:var(--muted);margin-top:2px;}
+.rv-free{font-size:9px;color:var(--brand);font-weight:700;margin-top:1px;}
 .rv-slot.sel{background:var(--brand);border-color:var(--brand);}
-.rv-slot.sel .t,.rv-slot.sel .p{color:#fff;}
+.rv-slot.sel .t,.rv-slot.sel .p,.rv-slot.sel .rv-free{color:#fff;}
 .rv-slot.bk{background:#f3efe3;color:#b6ac96;cursor:not-allowed;}
 .rv-slot.bk .t{text-decoration:line-through;font-weight:600;}
 .rv-slot.bk .p{color:#b6ac96;}
-.rv-legend{display:flex;gap:14px;font-size:11.5px;color:var(--muted);margin-top:12px;}
+.rv-legend{display:flex;gap:14px;font-size:11.5px;color:var(--muted);margin-top:12px;flex-wrap:wrap;}
 .rv-legend span{display:flex;align-items:center;gap:6px;}
 .rv-swatch{width:12px;height:12px;border-radius:4px;display:inline-block;}
 .rv-loading{font-size:12.5px;color:var(--muted);margin-bottom:10px;}
@@ -177,13 +163,11 @@ const styles = `
 .rv-bar{display:flex;justify-content:space-between;align-items:center;margin-top:16px;padding-top:15px;border-top:1px solid var(--line);}
 .rv-bar .l{font-size:12.5px;color:var(--muted);}
 .rv-bar .v{font-size:17px;font-weight:800;}
-.rv-addon{display:flex;align-items:center;justify-content:space-between;border:1px solid var(--line);
-  border-radius:11px;padding:11px 14px;margin-bottom:9px;}
+.rv-addon{display:flex;align-items:center;justify-content:space-between;border:1px solid var(--line);border-radius:11px;padding:11px 14px;margin-bottom:9px;}
 .rv-addon-name{font-size:14px;font-weight:600;}
 .rv-addon-price{font-size:12px;color:var(--muted);margin-top:1px;}
 .rv-stepper{display:flex;align-items:center;gap:12px;}
-.rv-sbtn{width:30px;height:30px;border-radius:8px;border:1px solid var(--line);background:#fff;
-  font-size:18px;font-weight:700;cursor:pointer;color:var(--ink);line-height:1;display:grid;place-items:center;}
+.rv-sbtn{width:30px;height:30px;border-radius:8px;border:1px solid var(--line);background:#fff;font-size:18px;font-weight:700;cursor:pointer;color:var(--ink);line-height:1;display:grid;place-items:center;}
 .rv-sbtn:disabled{opacity:.4;cursor:not-allowed;}
 .rv-sbtn:hover:not(:disabled){border-color:var(--brand);color:var(--brand);}
 .rv-qty{min-width:16px;text-align:center;font-weight:700;font-size:15px;}
@@ -198,7 +182,6 @@ const styles = `
 .rv-total .rv-sval{color:var(--brand);font-weight:800;font-size:17px;}
 .rv-nav{display:flex;gap:10px;margin-top:20px;}
 .rv-btn{font:inherit;font-size:14.5px;font-weight:700;cursor:pointer;padding:13px 18px;border-radius:11px;border:1px solid transparent;transition:background .15s,opacity .15s;}
-.rv-btn:focus-visible{outline:2px solid var(--brand);outline-offset:2px;}
 .rv-btn.primary{background:var(--brand);color:#fff;flex:1;}
 .rv-btn.primary:hover{background:var(--brand-dark);}
 .rv-btn.ghost{background:#fff;border-color:var(--line);color:var(--ink);}
@@ -207,14 +190,17 @@ const styles = `
 .rv-check{width:52px;height:52px;border-radius:50%;background:#e9f4ee;display:grid;place-items:center;margin:0 auto 14px;}
 .rv-check svg{stroke:var(--brand);}
 .rv-center{text-align:center;}
-.rv-va{background:#1c1a16;color:#fff;border-radius:12px;padding:16px 18px;margin:16px 0;text-align:center;}
+.rv-va{background:#1c1a16;color:#fff;border-radius:12px;padding:18px;margin:16px 0;text-align:center;}
 .rv-va-label{font-size:12px;opacity:.7;}
-.rv-va-num{font-size:23px;font-weight:800;letter-spacing:.04em;margin-top:4px;font-variant-numeric:tabular-nums;}
-.rv-va-amt{font-size:12.5px;opacity:.85;margin-top:8px;}
-.rv-copy{margin-top:10px;font:inherit;font-size:12.5px;font-weight:600;background:rgba(255,255,255,.12);color:#fff;border:none;padding:7px 14px;border-radius:8px;cursor:pointer;}
+.rv-va-num{font-size:22px;font-weight:800;letter-spacing:.06em;margin-top:4px;font-variant-numeric:tabular-nums;}
+.rv-va-holder{font-size:12.5px;opacity:.8;margin-top:2px;}
+.rv-va-amt{font-size:28px;font-weight:800;color:#e8c25a;margin-top:12px;font-variant-numeric:tabular-nums;}
+.rv-va-note{font-size:11px;opacity:.7;margin-top:2px;}
+.rv-count{font-size:13.5px;font-weight:700;color:var(--brand);margin-top:2px;}
+.rv-count.warn{color:var(--red);}
+.rv-copy{margin-top:12px;font:inherit;font-size:12.5px;font-weight:600;background:rgba(255,255,255,.12);color:#fff;border:none;padding:7px 14px;border-radius:8px;cursor:pointer;}
 .rv-copy:hover{background:rgba(255,255,255,.2);}
 .rv-note{display:flex;gap:10px;background:#f8f0dc;border:1px solid #ecd9a8;border-radius:11px;padding:13px 15px;font-size:12.5px;color:#6f5a22;line-height:1.55;margin-top:16px;text-align:left;}
-.rv-demo{margin-top:18px;font-size:11.5px;color:var(--muted);text-align:center;line-height:1.6;}
 @media(max-width:440px){.rv-grid{grid-template-columns:repeat(3,1fr);}}
 @media(prefers-reduced-motion:reduce){.rv-root *{transition:none!important;}}
 `;
@@ -225,20 +211,21 @@ function App() {
     const [date, setDate] = useState("");
     const [slots, setSlots] = useState([]);
     const [addons, setAddons] = useState({});
-    const [form, setForm] = useState({ name: "", phone: "", email: "", players: "4", notes: "" });
+    const [form, setForm] = useState({ name: "", phone: "", email: "", notes: "" });
     const [touched, setTouched] = useState(false);
     const [booking, setBooking] = useState(null);
     const [copied, setCopied] = useState(false);
-    // availability + submit
     const [bookedHours, setBookedHours] = useState([]);
     const [loadingSlots, setLoadingSlots] = useState(false);
     const [refreshKey, setRefreshKey] = useState(0);
     const [conflict, setConflict] = useState([]);
     const [submitting, setSubmitting] = useState(false);
     const [submitError, setSubmitError] = useState("");
+    const [remaining, setRemaining] = useState(0);
     const branch = BRANCHES.find((b) => b.id === branchId) || null;
-    const table = (branch === null || branch === void 0 ? void 0 : branch.tables.find((t) => t.id === tableId)) || null;
-    const weekend = date ? isWeekend(date) : false;
+    const table = branch ? branch.tables.find((t) => t.id === tableId) || null : null;
+    const isToday = date === todayISO();
+    const nowHour = new Date().getHours();
     const hours = useMemo(() => {
         if (!branch)
             return [];
@@ -247,49 +234,42 @@ function App() {
             out.push(h);
         return out;
     }, [branch]);
-    // Load which hours are taken whenever table/date changes (or after a conflict).
+    const pastHour = (h) => isToday && h <= nowHour;
+    const unitPrice = branch && table && date ? slotPriceFor(branch, table, date) : 0;
+    const slotTotal = slots.length * unitPrice;
+    const addonTotal = ADDONS.reduce((s, a) => s + (addons[a.id] || 0) * a.price, 0);
+    const total = slotTotal + addonTotal;
     useEffect(() => {
         if (!branch || !table || !date) {
             setBookedHours([]);
             return;
         }
         let cancelled = false;
-        (async () => {
-            // Preview mode: no backend, so simulate.
-            if (false) { // deployed: selalu pakai server asli
-                const booked = hours.filter((h) => simBooked(table.id, date, h));
-                if (cancelled)
-                    return;
-                setBookedHours(booked);
-                setSlots((s) => s.filter((h) => !booked.includes(h)));
+        setLoadingSlots(true);
+        fetch(`${API_BASE}/api/availability?branch=${encodeURIComponent(branch.id)}&table=${encodeURIComponent(table.id)}&date=${date}`)
+            .then((r) => r.json())
+            .then((d) => {
+            if (cancelled)
                 return;
-            }
-            // Real mode: ask the database.
-            setLoadingSlots(true);
-            try {
-                const res = await fetch(`${API_BASE}/api/availability?branch=${encodeURIComponent(branch.id)}&table=${encodeURIComponent(table.id)}&date=${date}`);
-                const data = await res.json();
-                if (cancelled)
-                    return;
-                const booked = data.bookedHours || [];
-                setBookedHours(booked);
-                setSlots((s) => s.filter((h) => !booked.includes(h)));
-            }
-            catch {
-                if (!cancelled)
-                    setBookedHours([]);
-            }
-            finally {
-                if (!cancelled)
-                    setLoadingSlots(false);
-            }
-        })();
+            const booked = d.bookedHours || [];
+            setBookedHours(booked);
+            setSlots((s) => s.filter((h) => booked.indexOf(h) === -1 && !pastHour(h)));
+        })
+            .catch(() => { if (!cancelled)
+            setBookedHours([]); })
+            .finally(() => { if (!cancelled)
+            setLoadingSlots(false); });
         return () => { cancelled = true; };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [tableId, date, refreshKey]);
-    const slotTotal = table ? slots.reduce((sum, h) => sum + slotPrice(h, weekend, table.mult), 0) : 0;
-    const addonTotal = ADDONS.reduce((s, a) => s + (addons[a.id] || 0) * a.price, 0);
-    const total = slotTotal + addonTotal;
+    // countdown on payment screen
+    useEffect(() => {
+        if (step !== 4 || !booking || !booking.expiresAt)
+            return;
+        const tick = () => setRemaining(Math.round((booking.expiresAt - Date.now()) / 1000));
+        tick();
+        const id = setInterval(tick, 1000);
+        return () => clearInterval(id);
+    }, [step, booking]);
     const errors = useMemo(() => {
         const e = {};
         if (!form.name.trim())
@@ -309,12 +289,13 @@ function App() {
     function pickDate(v) { setDate(v); setSlots([]); setConflict([]); }
     function toggleSlot(h) {
         setConflict([]);
-        setSlots((s) => (s.includes(h) ? s.filter((x) => x !== h) : [...s, h].sort((a, b) => a - b)));
+        setSlots((s) => (s.indexOf(h) !== -1 ? s.filter((x) => x !== h) : s.concat(h).sort((a, b) => a - b)));
     }
     function bumpAddon(id, d, max) {
         setAddons((a) => ({ ...a, [id]: Math.min(max, Math.max(0, (a[id] || 0) + d)) }));
     }
-    const isBooked = (h) => bookedHours.includes(h);
+    const isBooked = (h) => bookedHours.indexOf(h) !== -1;
+    const anyFreeTea = branch && date && slots.some((h) => freeIceTea(branch, date, h));
     const canNext = (step === 0 && branch) ||
         (step === 1 && table && date && slots.length > 0) ||
         (step === 2 && Object.keys(errors).length === 0) ||
@@ -330,55 +311,43 @@ function App() {
     }
     function back() { setStep((s) => Math.max(0, s - 1)); }
     async function createBooking() {
-        const hoursSel = [...slots];
-        const va = BCA_COMPANY_CODE + form.phone.replace(/\D/g, "").slice(-9).padStart(9, "0") + Math.floor(Math.random() * 10);
-        const code = "FUFU-" + Math.random().toString(36).slice(2, 8).toUpperCase();
+        const hoursSel = slots.slice();
         const chosenAddons = ADDONS.filter((a) => addons[a.id]).map((a) => ({ name: a.name, qty: addons[a.id], price: a.price }));
-        const snapshot = {
-            va, code, total, branchId: branch.id, tableId: table.id,
-            branch: branch.name, table: table.name, date,
-            hours: hoursSel, slots: hoursSel.map(hhmm), duration: hoursSel.length,
-            addons: chosenAddons, ...form,
+        const payload = {
+            total, branchId: branch.id, tableId: table.id, branch: branch.name, table: table.name + " · " + table.type,
+            date, hours: hoursSel, slots: hoursSel.map(hhmm), duration: hoursSel.length, addons: chosenAddons, ...form,
         };
-        if (true) { // deployed: selalu kirim ke server
-            setSubmitting(true);
-            setSubmitError("");
-            try {
-                const res = await fetch(`${API_BASE}/api/reservations`, {
-                    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(snapshot),
-                });
-                const data = await res.json().catch(() => ({}));
-                setSubmitting(false);
-                if (res.ok && data.ok) {
-                    setBooking({ ...snapshot, va: data.va || va, code: data.code || code });
-                    setStep(4);
-                    return;
-                }
-                if (res.status === 409) {
-                    // Slot taken by someone else while booking — bounce back and refresh.
-                    setConflict(data.conflict || []);
-                    setSlots([]);
-                    setStep(1);
-                    setRefreshKey((k) => k + 1);
-                    return;
-                }
-                setSubmitError("Gagal membuat reservasi. Silakan coba lagi.");
+        setSubmitting(true);
+        setSubmitError("");
+        try {
+            const res = await fetch(`${API_BASE}/api/reservations`, {
+                method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload),
+            });
+            const data = await res.json().catch(() => ({}));
+            setSubmitting(false);
+            if (res.ok && data.ok) {
+                setBooking({ ...payload, ...data });
+                setStep(4);
+                return;
             }
-            catch {
-                setSubmitting(false);
-                setSubmitError("Tidak bisa terhubung ke server. Coba lagi.");
+            if (res.status === 409) {
+                setConflict(data.conflict || []);
+                setSlots([]);
+                setStep(1);
+                setRefreshKey((k) => k + 1);
+                return;
             }
-            return;
+            setSubmitError("Gagal membuat reservasi. Silakan coba lagi.");
         }
-        // Preview mode (no backend connected yet).
-        setBooking(snapshot);
-        setStep(4);
+        catch (e) {
+            setSubmitting(false);
+            setSubmitError("Tidak bisa terhubung ke server. Coba lagi.");
+        }
     }
-    function copyVA() {
-        var _a;
+    function copyAmount() {
         if (!booking)
             return;
-        (_a = navigator.clipboard) === null || _a === void 0 ? void 0 : _a.writeText(booking.va);
+        navigator.clipboard && navigator.clipboard.writeText(String(booking.payable));
         setCopied(true);
         setTimeout(() => setCopied(false), 1500);
     }
@@ -389,12 +358,13 @@ function App() {
         setDate("");
         setSlots([]);
         setAddons({});
-        setForm({ name: "", phone: "", email: "", players: "4", notes: "" });
+        setForm({ name: "", phone: "", email: "", notes: "" });
         setTouched(false);
         setBooking(null);
         setConflict([]);
         setSubmitError("");
     }
+    const expired = step === 4 && booking && booking.expiresAt && remaining <= 0;
     return (React.createElement("div", { className: "rv-root" },
         React.createElement("style", null, styles),
         React.createElement("div", { className: "rv-shell" },
@@ -437,16 +407,18 @@ function App() {
                         conflict.map(hhmm).join(", "),
                         " baru saja dipesan orang lain. Silakan pilih jam lain ya.")),
                     React.createElement("label", { className: "rv-label" },
-                        "Jam ",
-                        weekend ? "(harga weekend)" : "(harga weekday)",
-                        " \u2014 bisa pilih lebih dari satu"),
+                        "Jam (",
+                        rupiah(unitPrice),
+                        "/jam) \u2014 bisa pilih lebih dari satu"),
                     loadingSlots && React.createElement("div", { className: "rv-loading" }, "Memuat ketersediaan\u2026"),
                     React.createElement("div", { className: "rv-grid" }, hours.map((h) => {
-                        const bk = isBooked(h);
-                        const sel = slots.includes(h);
+                        const bk = isBooked(h) || pastHour(h);
+                        const sel = slots.indexOf(h) !== -1;
+                        const tea = freeIceTea(branch, date, h);
                         return (React.createElement("button", { key: h, disabled: bk, onClick: () => toggleSlot(h), className: `rv-slot ${sel ? "sel" : ""} ${bk ? "bk" : ""}` },
                             React.createElement("div", { className: "t" }, hhmm(h)),
-                            React.createElement("div", { className: "p" }, bk ? "Penuh" : shortRp(slotPrice(h, weekend, table.mult)))));
+                            React.createElement("div", { className: "p" }, isBooked(h) ? "Penuh" : pastHour(h) ? "Lewat" : shortRp(slotPriceFor(branch, table, date))),
+                            tea && !bk && React.createElement("div", { className: "rv-free" }, "\uD83E\uDDCA es teh")));
                     })),
                     React.createElement("div", { className: "rv-legend" },
                         React.createElement("span", null,
@@ -457,7 +429,7 @@ function App() {
                             "Dipilih"),
                         React.createElement("span", null,
                             React.createElement("i", { className: "rv-swatch", style: { background: "#f3efe3" } }),
-                            "Penuh")),
+                            "Penuh/lewat")),
                     slots.length > 0 && (React.createElement("div", { className: "rv-bar" },
                         React.createElement("span", { className: "l" },
                             slots.length,
@@ -466,7 +438,7 @@ function App() {
                         React.createElement("span", { className: "v" }, rupiah(slotTotal)))))))),
             step === 2 && (React.createElement("div", { className: "rv-card" },
                 React.createElement("h2", { className: "rv-h" }, "Pesanan & data diri"),
-                React.createElement("p", { className: "rv-sub" }, "Tambah menu kalau mau, lalu isi kontak untuk konfirmasi."),
+                React.createElement("p", { className: "rv-sub" }, "Tambah menu kalau mau, lalu isi kontak untuk konfirmasi. 1 meja untuk maks. 4 pemain."),
                 React.createElement("label", { className: "rv-label" },
                     "Menu tambahan ",
                     React.createElement("span", { className: "rv-opt" }, "(opsional)")),
@@ -489,16 +461,11 @@ function App() {
                         React.createElement("input", { className: `rv-input ${touched && errors.phone ? "err" : ""}`, value: form.phone, onChange: set("phone"), placeholder: "0812xxxxxxx", inputMode: "tel" }),
                         touched && errors.phone && React.createElement("div", { className: "rv-errmsg" }, errors.phone)),
                     React.createElement("div", { className: "rv-field" },
-                        React.createElement("label", { className: "rv-label" }, "Jumlah pemain"),
-                        React.createElement("select", { className: "rv-select", value: form.players, onChange: set("players") }, [1, 2, 3, 4].map((n) => React.createElement("option", { key: n, value: n },
-                            n,
-                            " orang"))))),
-                React.createElement("div", { className: "rv-field" },
-                    React.createElement("label", { className: "rv-label" },
-                        "Email ",
-                        React.createElement("span", { className: "rv-opt" }, "(opsional)")),
-                    React.createElement("input", { className: `rv-input ${touched && errors.email ? "err" : ""}`, value: form.email, onChange: set("email"), placeholder: "email@contoh.com", inputMode: "email" }),
-                    touched && errors.email && React.createElement("div", { className: "rv-errmsg" }, errors.email)),
+                        React.createElement("label", { className: "rv-label" },
+                            "Email ",
+                            React.createElement("span", { className: "rv-opt" }, "(opsional)")),
+                        React.createElement("input", { className: `rv-input ${touched && errors.email ? "err" : ""}`, value: form.email, onChange: set("email"), placeholder: "email@contoh.com", inputMode: "email" }),
+                        touched && errors.email && React.createElement("div", { className: "rv-errmsg" }, errors.email))),
                 React.createElement("div", { className: "rv-field" },
                     React.createElement("label", { className: "rv-label" },
                         "Catatan ",
@@ -541,11 +508,6 @@ function App() {
                     React.createElement("div", { className: "rv-srow" },
                         React.createElement("span", { className: "rv-slabel" }, "WhatsApp"),
                         React.createElement("span", { className: "rv-sval" }, form.phone)),
-                    React.createElement("div", { className: "rv-srow" },
-                        React.createElement("span", { className: "rv-slabel" }, "Jumlah pemain"),
-                        React.createElement("span", { className: "rv-sval" },
-                            form.players,
-                            " orang")),
                     form.email && React.createElement("div", { className: "rv-srow" },
                         React.createElement("span", { className: "rv-slabel" }, "Email"),
                         React.createElement("span", { className: "rv-sval" }, form.email)),
@@ -555,6 +517,7 @@ function App() {
                     React.createElement("div", { className: "rv-srow rv-total" },
                         React.createElement("span", { className: "rv-slabel", style: { color: "#1c1a16", fontWeight: 700 } }, "Total bayar"),
                         React.createElement("span", { className: "rv-sval" }, rupiah(total)))),
+                anyFreeTea && React.createElement("p", { className: "rv-sub", style: { marginTop: 12, marginBottom: 0 } }, "\uD83E\uDDCA Termasuk gratis es teh untuk jam 08:00\u201315:00 (weekday)."),
                 submitError && React.createElement("div", { className: "rv-conflict", style: { marginTop: 14, marginBottom: 0 } }, submitError))),
             step === 4 && booking && (React.createElement("div", { className: "rv-card rv-center" },
                 React.createElement("div", { className: "rv-check" },
@@ -564,28 +527,41 @@ function App() {
                 React.createElement("p", { className: "rv-sub" },
                     "Kode ",
                     React.createElement("b", null, booking.code),
-                    ". Selesaikan pembayaran untuk mengunci meja kamu."),
+                    ". Transfer dengan nominal ",
+                    React.createElement("b", null, "tepat"),
+                    " di bawah untuk mengunci meja."),
                 React.createElement("div", { className: "rv-va" },
-                    React.createElement("div", { className: "rv-va-label" }, "BCA Virtual Account"),
-                    React.createElement("div", { className: "rv-va-num" }, booking.va),
-                    React.createElement("div", { className: "rv-va-amt" },
-                        "Total tagihan: ",
-                        React.createElement("b", null, rupiah(booking.total))),
-                    React.createElement("button", { className: "rv-copy", onClick: copyVA }, copied ? "Tersalin ✓" : "Salin nomor")),
+                    React.createElement("div", { className: "rv-va-label" },
+                        "Transfer ke ",
+                        booking.bankName || "BCA"),
+                    React.createElement("div", { className: "rv-va-num" }, booking.bankAccount || "(atur nomor rekening)"),
+                    React.createElement("div", { className: "rv-va-holder" },
+                        "a.n. ",
+                        booking.bankHolder || "(atur nama rekening)"),
+                    React.createElement("div", { className: "rv-va-amt" }, rupiah(booking.payable)),
+                    React.createElement("div", { className: "rv-va-note" },
+                        "Total ",
+                        rupiah(booking.total),
+                        " + kode unik ",
+                        booking.uniqueCode,
+                        " \u2014 transfer PAS sampai 3 digit terakhir."),
+                    React.createElement("button", { className: "rv-copy", onClick: copyAmount }, copied ? "Tersalin ✓" : "Salin nominal")),
+                expired
+                    ? React.createElement("div", { className: "rv-count warn" }, "Waktu habis \u2014 meja sudah dilepas. Silakan pesan ulang.")
+                    : React.createElement("div", { className: `rv-count ${remaining < 120 ? "warn" : ""}` },
+                        "Selesaikan dalam ",
+                        mmss(remaining)),
                 React.createElement("div", { className: "rv-note" },
                     React.createElement("span", null, "\u2139\uFE0F"),
                     React.createElement("span", null,
                         "Buka BCA Mobile / m-BCA \u2192 ",
-                        React.createElement("b", null, "m-Transfer \u2192 BCA Virtual Account"),
-                        " \u2192 masukkan nomor di atas \u2192 pastikan nominal ",
-                        React.createElement("b", null, rupiah(booking.total)),
-                        ". Meja ditahan sementara sampai pembayaran masuk. Konfirmasi dikirim ke WhatsApp",
-                        booking.email ? " & email" : "",
-                        ".")),
+                        React.createElement("b", null, "Transfer"),
+                        " \u2192 masukkan nomor rekening di atas \u2192 isi nominal ",
+                        React.createElement("b", null, rupiah(booking.payable)),
+                        " (pas). Lalu kirim bukti transfer ke WhatsApp kami. Meja ditahan 15 menit.")),
                 BUSINESS_WHATSAPP && (React.createElement("a", { className: "rv-btn primary", href: waLink(BUSINESS_WHATSAPP) || undefined, target: "_blank", rel: "noopener noreferrer", style: { display: "block", textAlign: "center", textDecoration: "none", marginTop: 14 } }, "Kirim bukti transfer ke WhatsApp")),
                 React.createElement("div", { className: "rv-nav" },
-                    React.createElement("button", { className: "rv-btn ghost", onClick: reset, style: { flex: 1 } }, "Buat reservasi baru")),
-                React.createElement("p", { className: "rv-demo" }, "Prototype: nomor VA masih contoh. Nomor asli & status pembayaran muncul setelah payment gateway (Xendit/Midtrans) tersambung."))),
+                    React.createElement("button", { className: "rv-btn ghost", onClick: reset, style: { flex: 1 } }, "Buat reservasi baru")))),
             step < 4 && (React.createElement("div", { className: "rv-nav" },
                 step > 0 && React.createElement("button", { className: "rv-btn ghost", onClick: back, disabled: submitting }, "Kembali"),
                 step < 3 && React.createElement("button", { className: "rv-btn primary", onClick: next, disabled: !canNext },
