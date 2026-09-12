@@ -47,6 +47,9 @@ const mailer = (SMTP_USER && SMTP_PASS)
       port: Number(SMTP_PORT),
       secure: Number(SMTP_PORT) === 465,
       auth: { user: SMTP_USER, pass: SMTP_PASS },
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 15000,
     })
   : null;
 
@@ -226,28 +229,26 @@ app.post("/api/reservations", async (req, res) => {
 
   console.log(`[reservasi] ${code} @ ${body.branch} · ${body.table} ${body.date} [${(body.hours || []).join(",")}]`);
 
-  // Kirim email tanpa menggagalkan booking kalau salah satu error.
-  const safeSend = async (opts) => {
-    try { await sendEmail(opts); }
-    catch (err) { console.error("[email] error:", err.message); }
-  };
+  // Jawab browser SEKARANG — jangan menunggu email selesai terkirim.
+  res.json({ ok: true, code, va: body.va, expiresAt: result.expiresAt });
 
+  // Kirim email di belakang layar (fire-and-forget). Kalau lambat/gagal,
+  // pelanggan tetap sudah dapat halaman pembayaran; error hanya masuk log.
+  const safeSend = (opts) => sendEmail(opts).catch((err) => console.error("[email] error:", err.message));
   if (body.email) {
-    await safeSend({
+    safeSend({
       to: body.email,
       subject: `Reservasi ${code} — ${BUSINESS_NAME}`,
       html: buildEmailHTML({ ...body, code }),
     });
   }
   if (ownerInbox) {
-    await safeSend({
+    safeSend({
       to: ownerInbox,
       subject: `📅 Booking baru: ${body.table} · ${body.date} (${code})`,
       html: buildOwnerHTML({ ...body, code }),
     });
   }
-
-  res.json({ ok: true, code, va: body.va, expiresAt: result.expiresAt });
 });
 
 // Owner: list recent bookings.
