@@ -4,112 +4,113 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Fu Fu Mahjong & Cafe — Reservasi</title>
-<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <style>html,body{margin:0;padding:0;background:#faf6ec;}</style>
+<script>
+// Kalau ada yang gagal, tampilkan pesan di layar (bukan halaman kosong).
+window.onerror = function (msg) {
+  var r = document.getElementById("root");
+  if (r && !r.hasChildNodes()) {
+    r.innerHTML =
+      '<div style="font-family:sans-serif;padding:24px;color:#8f2f28;line-height:1.6;max-width:560px;margin:0 auto">'
+      + 'Maaf, halaman gagal dimuat.<br><small>' + msg + '</small><br><br>'
+      + 'Coba <b>refresh</b> halaman ini, atau cek koneksi internet.</div>';
+  }
+};
+</script>
+<script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
 </head>
 <body>
 <div id="root"></div>
-<script type="text/babel" data-presets="react">
+<script>
+"use strict";
 const { useState, useMemo, useEffect } = React;
-
-
 /* ------------------------------------------------------------------
    EDIT ME: business, branches, tables, pricing, add-ons.
    NOTE: jumlah meja & harga di bawah masih perkiraan — ganti sesuai
    kondisi asli Fu Fu Mahjong & Cafe.
 ------------------------------------------------------------------ */
 const BUSINESS = {
-  name: "Fu Fu Mahjong & Cafe",
-  tagline: "Reservasi meja mahjong — pilih cabang, meja & jam",
+    name: "Fu Fu Mahjong & Cafe",
+    tagline: "Reservasi meja mahjong — pilih cabang, meja & jam",
 };
-
 // Logo. Untuk produksi, ganti dengan path file, mis src="/fufu-logo.png".
 // Data URI di bawah dipakai supaya preview langsung menampilkan logo.
 const LOGO = "/fufu-logo.png";
-
 const BRANCHES = [
-  {
-    id: "gs", name: "Fu Fu Gading Serpong", area: "Gading Serpong, Tangerang",
-    address: "Ruko Sentra Niaga Blok SG 3 No. 8, Lt. 2, Sinpasa",
-    open: 8, close: 22,
-    tables: [
-      { id: "gs1", name: "Meja 1", type: "Reguler", mult: 1 },
-      { id: "gs2", name: "Meja 2", type: "Reguler", mult: 1 },
-      { id: "gs3", name: "Meja 3", type: "Reguler", mult: 1 },
-      { id: "gs4", name: "Meja 4", type: "Reguler", mult: 1 },
-      { id: "gs5", name: "Meja 5", type: "Reguler", mult: 1 },
-      { id: "gs6", name: "VIP Room", type: "Ruang privat", mult: 1.6 },
-    ],
-  },
-  {
-    id: "bsd", name: "Fu Fu BSD", area: "BSD (Pulse Padel)",
-    address: "Pulse Padel, BSD",
-    open: 8, close: 23,
-    tables: [
-      { id: "b1", name: "Meja 1", type: "Reguler", mult: 1 },
-      { id: "b2", name: "Meja 2", type: "Reguler", mult: 1 },
-      { id: "b3", name: "Meja 3", type: "Reguler", mult: 1 },
-      { id: "b4", name: "Meja 4", type: "Reguler", mult: 1 },
-    ],
-  },
+    {
+        id: "gs", name: "Fu Fu Gading Serpong", area: "Gading Serpong, Tangerang",
+        address: "Ruko Sentra Niaga Blok SG 3 No. 8, Lt. 2, Sinpasa",
+        open: 8, close: 22,
+        tables: [
+            { id: "gs1", name: "Meja 1", type: "Reguler", mult: 1 },
+            { id: "gs2", name: "Meja 2", type: "Reguler", mult: 1 },
+            { id: "gs3", name: "Meja 3", type: "Reguler", mult: 1 },
+            { id: "gs4", name: "Meja 4", type: "Reguler", mult: 1 },
+            { id: "gs5", name: "Meja 5", type: "Reguler", mult: 1 },
+            { id: "gs6", name: "VIP Room", type: "Ruang privat", mult: 1.6 },
+        ],
+    },
+    {
+        id: "bsd", name: "Fu Fu BSD", area: "BSD (Pulse Padel)",
+        address: "Pulse Padel, BSD",
+        open: 8, close: 23,
+        tables: [
+            { id: "b1", name: "Meja 1", type: "Reguler", mult: 1 },
+            { id: "b2", name: "Meja 2", type: "Reguler", mult: 1 },
+            { id: "b3", name: "Meja 3", type: "Reguler", mult: 1 },
+            { id: "b4", name: "Meja 4", type: "Reguler", mult: 1 },
+        ],
+    },
 ];
-
 // Harga sewa meja per jam (Rupiah). Peak = jam 17:00 ke atas. Weekend lebih mahal.
 // VIP Room otomatis lebih mahal lewat "mult" di atas.
 function baseSlotPrice(hour, weekend) {
-  const peak = hour >= 17;
-  if (weekend) return peak ? 90000 : 60000;
-  return peak ? 75000 : 50000;
+    const peak = hour >= 17;
+    if (weekend)
+        return peak ? 90000 : 60000;
+    return peak ? 75000 : 50000;
 }
 function slotPrice(hour, weekend, mult) {
-  return Math.round((baseSlotPrice(hour, weekend) * mult) / 1000) * 1000;
+    return Math.round((baseSlotPrice(hour, weekend) * mult) / 1000) * 1000;
 }
-
 // Menu tambahan (F&B). Ganti sesuai menu asli.
 const ADDONS = [
-  { id: "teh", name: "Teh Poci (1 teko)", price: 35000, max: 10 },
-  { id: "kopi", name: "Kopi", price: 25000, max: 10 },
-  { id: "snack", name: "Snack Platter", price: 75000, max: 6 },
-  { id: "air", name: "Air Mineral", price: 10000, max: 10 },
+    { id: "teh", name: "Teh Poci (1 teko)", price: 35000, max: 10 },
+    { id: "kopi", name: "Kopi", price: 25000, max: 10 },
+    { id: "snack", name: "Snack Platter", price: 75000, max: 6 },
+    { id: "air", name: "Air Mineral", price: 10000, max: 10 },
 ];
-
 const BCA_COMPANY_CODE = "12345"; // kode perusahaan dari payment gateway (placeholder)
-
 // ⬇️ GANTI dengan nomor WhatsApp bisnis kamu. Pelanggan pakai ini untuk
 // kirim bukti transfer setelah membayar. Format bebas, mis "0812-3456-7890".
 // Biarkan ada "X" berarti belum diisi (tombol tampil tapi belum aktif).
 const BUSINESS_WHATSAPP = "08XX-XXXX-XXXX";
-
 // Kosongkan ("") untuk mode preview (ketersediaan disimulasikan, tanpa email/DB).
 // Isi URL backend untuk pakai database + email asli, mis "http://localhost:3001".
 const API_BASE = "";
-
 const STEPS = ["Cabang", "Jadwal", "Detail", "Konfirmasi"];
-
 /* ------------------------------------------------------------------ */
-
 // Simulasi ketersediaan untuk MODE PREVIEW saja (saat API_BASE kosong).
 // Kalau backend tersambung, ketersediaan asli diambil dari database.
 function simBooked(tableId, date, hour) {
-  const s = `${tableId}|${date}|${hour}`;
-  let h = 0;
-  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
-  return h % 6 === 0;
+    const s = `${tableId}|${date}|${hour}`;
+    let h = 0;
+    for (let i = 0; i < s.length; i++)
+        h = (h * 31 + s.charCodeAt(i)) >>> 0;
+    return h % 6 === 0;
 }
-
 const rupiah = (n) => "Rp" + n.toLocaleString("id-ID");
 const shortRp = (n) => (n / 1000).toLocaleString("id-ID") + "rb";
 const hhmm = (h) => `${String(h).padStart(2, "0")}:00`;
 function todayISO() { return new Date().toISOString().slice(0, 10); }
 function isWeekend(iso) { const d = new Date(iso).getDay(); return d === 0 || d === 6; }
 function waLink(phone) {
-  if (!phone || phone.includes("X")) return null; // belum diisi
-  const p = phone.replace(/\D/g, "").replace(/^0/, "62");
-  return p ? `https://wa.me/${p}` : null;
+    if (!phone || phone.includes("X"))
+        return null; // belum diisi
+    const p = phone.replace(/\D/g, "").replace(/^0/, "62");
+    return p ? `https://wa.me/${p}` : null;
 }
-
 const styles = `
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 .rv-root{
@@ -217,396 +218,383 @@ const styles = `
 @media(max-width:440px){.rv-grid{grid-template-columns:repeat(3,1fr);}}
 @media(prefers-reduced-motion:reduce){.rv-root *{transition:none!important;}}
 `;
-
 function App() {
-  const [step, setStep] = useState(0);
-  const [branchId, setBranchId] = useState(null);
-  const [tableId, setTableId] = useState(null);
-  const [date, setDate] = useState("");
-  const [slots, setSlots] = useState([]);
-  const [addons, setAddons] = useState({});
-  const [form, setForm] = useState({ name: "", phone: "", email: "", players: "4", notes: "" });
-  const [touched, setTouched] = useState(false);
-  const [booking, setBooking] = useState(null);
-  const [copied, setCopied] = useState(false);
-
-  // availability + submit
-  const [bookedHours, setBookedHours] = useState([]);
-  const [loadingSlots, setLoadingSlots] = useState(false);
-  const [refreshKey, setRefreshKey] = useState(0);
-  const [conflict, setConflict] = useState([]);
-  const [submitting, setSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState("");
-
-  const branch = BRANCHES.find((b) => b.id === branchId) || null;
-  const table = branch?.tables.find((t) => t.id === tableId) || null;
-  const weekend = date ? isWeekend(date) : false;
-
-  const hours = useMemo(() => {
-    if (!branch) return [];
-    const out = [];
-    for (let h = branch.open; h < branch.close; h++) out.push(h);
-    return out;
-  }, [branch]);
-
-  // Load which hours are taken whenever table/date changes (or after a conflict).
-  useEffect(() => {
-    if (!branch || !table || !date) { setBookedHours([]); return; }
-    let cancelled = false;
-
-    (async () => {
-      // Preview mode: no backend, so simulate.
-      if (false) { // deployed: selalu pakai server asli
-        const booked = hours.filter((h) => simBooked(table.id, date, h));
-        if (cancelled) return;
-        setBookedHours(booked);
-        setSlots((s) => s.filter((h) => !booked.includes(h)));
-        return;
-      }
-      // Real mode: ask the database.
-      setLoadingSlots(true);
-      try {
-        const res = await fetch(`${API_BASE}/api/availability?branch=${encodeURIComponent(branch.id)}&table=${encodeURIComponent(table.id)}&date=${date}`);
-        const data = await res.json();
-        if (cancelled) return;
-        const booked = data.bookedHours || [];
-        setBookedHours(booked);
-        setSlots((s) => s.filter((h) => !booked.includes(h)));
-      } catch {
-        if (!cancelled) setBookedHours([]);
-      } finally {
-        if (!cancelled) setLoadingSlots(false);
-      }
-    })();
-
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tableId, date, refreshKey]);
-
-  const slotTotal = table ? slots.reduce((sum, h) => sum + slotPrice(h, weekend, table.mult), 0) : 0;
-  const addonTotal = ADDONS.reduce((s, a) => s + (addons[a.id] || 0) * a.price, 0);
-  const total = slotTotal + addonTotal;
-
-  const errors = useMemo(() => {
-    const e = {};
-    if (!form.name.trim()) e.name = "Nama wajib diisi";
-    const phone = form.phone.replace(/[\s-]/g, "");
-    if (!phone) e.phone = "Nomor WhatsApp wajib diisi";
-    else if (!/^(\+?62|0)8\d{7,12}$/.test(phone)) e.phone = "Contoh: 0812xxxxxxx";
-    if (form.email.trim() && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.email.trim())) e.email = "Format email tidak valid";
-    return e;
-  }, [form]);
-
-  const set = (k) => (ev) => setForm((f) => ({ ...f, [k]: ev.target.value }));
-
-  function pickBranch(id) { setBranchId(id); setTableId(null); setSlots([]); setConflict([]); }
-  function pickTable(id) { setTableId(id); setSlots([]); setConflict([]); }
-  function pickDate(v) { setDate(v); setSlots([]); setConflict([]); }
-  function toggleSlot(h) {
-    setConflict([]);
-    setSlots((s) => (s.includes(h) ? s.filter((x) => x !== h) : [...s, h].sort((a, b) => a - b)));
-  }
-  function bumpAddon(id, d, max) {
-    setAddons((a) => ({ ...a, [id]: Math.min(max, Math.max(0, (a[id] || 0) + d)) }));
-  }
-
-  const isBooked = (h) => bookedHours.includes(h);
-
-  const canNext =
-    (step === 0 && branch) ||
-    (step === 1 && table && date && slots.length > 0) ||
-    (step === 2 && Object.keys(errors).length === 0) ||
-    step === 3;
-
-  function next() {
-    if (step === 2) { setTouched(true); if (Object.keys(errors).length) return; }
-    if (step < 3) setStep((s) => s + 1);
-  }
-  function back() { setStep((s) => Math.max(0, s - 1)); }
-
-  async function createBooking() {
-    const hoursSel = [...slots];
-    const va = BCA_COMPANY_CODE + form.phone.replace(/\D/g, "").slice(-9).padStart(9, "0") + Math.floor(Math.random() * 10);
-    const code = "FUFU-" + Math.random().toString(36).slice(2, 8).toUpperCase();
-    const chosenAddons = ADDONS.filter((a) => addons[a.id]).map((a) => ({ name: a.name, qty: addons[a.id], price: a.price }));
-    const snapshot = {
-      va, code, total, branchId: branch.id, tableId: table.id,
-      branch: branch.name, table: table.name, date,
-      hours: hoursSel, slots: hoursSel.map(hhmm), duration: hoursSel.length,
-      addons: chosenAddons, ...form,
-    };
-
-    if (true) { // deployed: selalu kirim ke server
-      setSubmitting(true); setSubmitError("");
-      try {
-        const res = await fetch(`${API_BASE}/api/reservations`, {
-          method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(snapshot),
-        });
-        const data = await res.json().catch(() => ({}));
-        setSubmitting(false);
-        if (res.ok && data.ok) {
-          setBooking({ ...snapshot, va: data.va || va, code: data.code || code });
-          setStep(4);
-          return;
+    const [step, setStep] = useState(0);
+    const [branchId, setBranchId] = useState(null);
+    const [tableId, setTableId] = useState(null);
+    const [date, setDate] = useState("");
+    const [slots, setSlots] = useState([]);
+    const [addons, setAddons] = useState({});
+    const [form, setForm] = useState({ name: "", phone: "", email: "", players: "4", notes: "" });
+    const [touched, setTouched] = useState(false);
+    const [booking, setBooking] = useState(null);
+    const [copied, setCopied] = useState(false);
+    // availability + submit
+    const [bookedHours, setBookedHours] = useState([]);
+    const [loadingSlots, setLoadingSlots] = useState(false);
+    const [refreshKey, setRefreshKey] = useState(0);
+    const [conflict, setConflict] = useState([]);
+    const [submitting, setSubmitting] = useState(false);
+    const [submitError, setSubmitError] = useState("");
+    const branch = BRANCHES.find((b) => b.id === branchId) || null;
+    const table = (branch === null || branch === void 0 ? void 0 : branch.tables.find((t) => t.id === tableId)) || null;
+    const weekend = date ? isWeekend(date) : false;
+    const hours = useMemo(() => {
+        if (!branch)
+            return [];
+        const out = [];
+        for (let h = branch.open; h < branch.close; h++)
+            out.push(h);
+        return out;
+    }, [branch]);
+    // Load which hours are taken whenever table/date changes (or after a conflict).
+    useEffect(() => {
+        if (!branch || !table || !date) {
+            setBookedHours([]);
+            return;
         }
-        if (res.status === 409) {
-          // Slot taken by someone else while booking — bounce back and refresh.
-          setConflict(data.conflict || []);
-          setSlots([]);
-          setStep(1);
-          setRefreshKey((k) => k + 1);
-          return;
-        }
-        setSubmitError("Gagal membuat reservasi. Silakan coba lagi.");
-      } catch {
-        setSubmitting(false);
-        setSubmitError("Tidak bisa terhubung ke server. Coba lagi.");
-      }
-      return;
+        let cancelled = false;
+        (async () => {
+            // Preview mode: no backend, so simulate.
+            if (false) { // deployed: selalu pakai server asli
+                const booked = hours.filter((h) => simBooked(table.id, date, h));
+                if (cancelled)
+                    return;
+                setBookedHours(booked);
+                setSlots((s) => s.filter((h) => !booked.includes(h)));
+                return;
+            }
+            // Real mode: ask the database.
+            setLoadingSlots(true);
+            try {
+                const res = await fetch(`${API_BASE}/api/availability?branch=${encodeURIComponent(branch.id)}&table=${encodeURIComponent(table.id)}&date=${date}`);
+                const data = await res.json();
+                if (cancelled)
+                    return;
+                const booked = data.bookedHours || [];
+                setBookedHours(booked);
+                setSlots((s) => s.filter((h) => !booked.includes(h)));
+            }
+            catch {
+                if (!cancelled)
+                    setBookedHours([]);
+            }
+            finally {
+                if (!cancelled)
+                    setLoadingSlots(false);
+            }
+        })();
+        return () => { cancelled = true; };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [tableId, date, refreshKey]);
+    const slotTotal = table ? slots.reduce((sum, h) => sum + slotPrice(h, weekend, table.mult), 0) : 0;
+    const addonTotal = ADDONS.reduce((s, a) => s + (addons[a.id] || 0) * a.price, 0);
+    const total = slotTotal + addonTotal;
+    const errors = useMemo(() => {
+        const e = {};
+        if (!form.name.trim())
+            e.name = "Nama wajib diisi";
+        const phone = form.phone.replace(/[\s-]/g, "");
+        if (!phone)
+            e.phone = "Nomor WhatsApp wajib diisi";
+        else if (!/^(\+?62|0)8\d{7,12}$/.test(phone))
+            e.phone = "Contoh: 0812xxxxxxx";
+        if (form.email.trim() && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.email.trim()))
+            e.email = "Format email tidak valid";
+        return e;
+    }, [form]);
+    const set = (k) => (ev) => setForm((f) => ({ ...f, [k]: ev.target.value }));
+    function pickBranch(id) { setBranchId(id); setTableId(null); setSlots([]); setConflict([]); }
+    function pickTable(id) { setTableId(id); setSlots([]); setConflict([]); }
+    function pickDate(v) { setDate(v); setSlots([]); setConflict([]); }
+    function toggleSlot(h) {
+        setConflict([]);
+        setSlots((s) => (s.includes(h) ? s.filter((x) => x !== h) : [...s, h].sort((a, b) => a - b)));
     }
-
-    // Preview mode (no backend connected yet).
-    setBooking(snapshot);
-    setStep(4);
-  }
-
-  function copyVA() {
-    if (!booking) return;
-    navigator.clipboard?.writeText(booking.va);
-    setCopied(true); setTimeout(() => setCopied(false), 1500);
-  }
-  function reset() {
-    setStep(0); setBranchId(null); setTableId(null); setDate(""); setSlots([]);
-    setAddons({}); setForm({ name: "", phone: "", email: "", players: "4", notes: "" });
-    setTouched(false); setBooking(null); setConflict([]); setSubmitError("");
-  }
-
-  return (
-    <div className="rv-root">
-      <style>{styles}</style>
-      <div className="rv-shell">
-        <header className="rv-head">
-          <img className="rv-logo" src={LOGO} alt={BUSINESS.name} />
-          <div className="rv-tag">{BUSINESS.tagline}</div>
-        </header>
-
-        {step < 4 && (
-          <div className="rv-steps">
-            {STEPS.map((label, i) => (
-              <div key={label} className={`rv-step ${i === step ? "active" : ""} ${i < step ? "done" : ""}`}>
-                <div className="rv-step-bar" />
-                <div className="rv-step-label">{label}</div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* STEP 0 — branch */}
-        {step === 0 && (
-          <div className="rv-card">
-            <h2 className="rv-h">Pilih cabang</h2>
-            <p className="rv-sub">Reservasi diproses di cabang yang kamu pilih.</p>
-            {BRANCHES.map((b) => (
-              <button key={b.id} className={`rv-branch ${branchId === b.id ? "sel" : ""}`} onClick={() => pickBranch(b.id)}>
-                <span className="rv-radio"><i /></span>
-                <span>
-                  <div className="rv-branch-name">{b.name}</div>
-                  <div className="rv-branch-meta">
-                    {b.address}<br />
-                    {b.tables.length} meja · buka {hhmm(b.open)}–{hhmm(b.close)}
-                  </div>
-                </span>
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* STEP 1 — table + date + slots */}
-        {step === 1 && (
-          <div className="rv-card">
-            <h2 className="rv-h">Pilih meja & jam</h2>
-            <p className="rv-sub">{branch.name}</p>
-
-            <div className="rv-field">
-              <label className="rv-label">Meja</label>
-              <div className="rv-pills">
-                {branch.tables.map((t) => (
-                  <button key={t.id} className={`rv-pill ${tableId === t.id ? "sel" : ""}`} onClick={() => pickTable(t.id)}>
-                    {t.name}<small>{t.type}</small>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="rv-field">
-              <label className="rv-label">Tanggal main</label>
-              <input className="rv-input" type="date" min={todayISO()} value={date} onChange={(e) => pickDate(e.target.value)} />
-            </div>
-
-            {table && date && (
-              <div className="rv-field">
-                {conflict.length > 0 && (
-                  <div className="rv-conflict">
-                    Yah, jam {conflict.map(hhmm).join(", ")} baru saja dipesan orang lain. Silakan pilih jam lain ya.
-                  </div>
-                )}
-                <label className="rv-label">Jam {weekend ? "(harga weekend)" : "(harga weekday)"} — bisa pilih lebih dari satu</label>
-                {loadingSlots && <div className="rv-loading">Memuat ketersediaan…</div>}
-                <div className="rv-grid">
-                  {hours.map((h) => {
-                    const bk = isBooked(h);
-                    const sel = slots.includes(h);
-                    return (
-                      <button key={h} disabled={bk} onClick={() => toggleSlot(h)}
-                        className={`rv-slot ${sel ? "sel" : ""} ${bk ? "bk" : ""}`}>
-                        <div className="t">{hhmm(h)}</div>
-                        <div className="p">{bk ? "Penuh" : shortRp(slotPrice(h, weekend, table.mult))}</div>
-                      </button>
-                    );
-                  })}
-                </div>
-                <div className="rv-legend">
-                  <span><i className="rv-swatch" style={{ background: "#fff", border: "1px solid #e8e0cf" }} />Tersedia</span>
-                  <span><i className="rv-swatch" style={{ background: "#146c54" }} />Dipilih</span>
-                  <span><i className="rv-swatch" style={{ background: "#f3efe3" }} />Penuh</span>
-                </div>
-                {slots.length > 0 && (
-                  <div className="rv-bar">
-                    <span className="l">{slots.length} jam · {table.name}</span>
-                    <span className="v">{rupiah(slotTotal)}</span>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* STEP 2 — add-ons + details */}
-        {step === 2 && (
-          <div className="rv-card">
-            <h2 className="rv-h">Pesanan & data diri</h2>
-            <p className="rv-sub">Tambah menu kalau mau, lalu isi kontak untuk konfirmasi.</p>
-
-            <label className="rv-label">Menu tambahan <span className="rv-opt">(opsional)</span></label>
-            {ADDONS.map((a) => (
-              <div key={a.id} className="rv-addon">
-                <div>
-                  <div className="rv-addon-name">{a.name}</div>
-                  <div className="rv-addon-price">{rupiah(a.price)}</div>
-                </div>
-                <div className="rv-stepper">
-                  <button className="rv-sbtn" onClick={() => bumpAddon(a.id, -1, a.max)} disabled={!addons[a.id]}>−</button>
-                  <span className="rv-qty">{addons[a.id] || 0}</span>
-                  <button className="rv-sbtn" onClick={() => bumpAddon(a.id, 1, a.max)} disabled={(addons[a.id] || 0) >= a.max}>+</button>
-                </div>
-              </div>
-            ))}
-
-            <div className="rv-divider" />
-
-            <div className="rv-field">
-              <label className="rv-label">Nama lengkap</label>
-              <input className={`rv-input ${touched && errors.name ? "err" : ""}`} value={form.name} onChange={set("name")} placeholder="Nama kamu" />
-              {touched && errors.name && <div className="rv-errmsg">{errors.name}</div>}
-            </div>
-            <div className="rv-row2">
-              <div className="rv-field">
-                <label className="rv-label">Nomor WhatsApp</label>
-                <input className={`rv-input ${touched && errors.phone ? "err" : ""}`} value={form.phone} onChange={set("phone")} placeholder="0812xxxxxxx" inputMode="tel" />
-                {touched && errors.phone && <div className="rv-errmsg">{errors.phone}</div>}
-              </div>
-              <div className="rv-field">
-                <label className="rv-label">Jumlah pemain</label>
-                <select className="rv-select" value={form.players} onChange={set("players")}>
-                  {[1, 2, 3, 4].map((n) => <option key={n} value={n}>{n} orang</option>)}
-                </select>
-              </div>
-            </div>
-            <div className="rv-field">
-              <label className="rv-label">Email <span className="rv-opt">(opsional)</span></label>
-              <input className={`rv-input ${touched && errors.email ? "err" : ""}`} value={form.email} onChange={set("email")} placeholder="email@contoh.com" inputMode="email" />
-              {touched && errors.email && <div className="rv-errmsg">{errors.email}</div>}
-            </div>
-            <div className="rv-field">
-              <label className="rv-label">Catatan <span className="rv-opt">(opsional)</span></label>
-              <input className="rv-input" value={form.notes} onChange={set("notes")} placeholder="Permintaan khusus…" />
-            </div>
-          </div>
-        )}
-
-        {/* STEP 3 — review */}
-        {step === 3 && (
-          <div className="rv-card">
-            <h2 className="rv-h">Cek reservasi kamu</h2>
-            <p className="rv-sub">Pastikan semua benar sebelum lanjut ke pembayaran.</p>
-            <div className="rv-summary">
-              <div className="rv-srow"><span className="rv-slabel">Cabang</span><span className="rv-sval">{branch.name}</span></div>
-              <div className="rv-srow"><span className="rv-slabel">Meja</span><span className="rv-sval">{table.name} · {table.type}</span></div>
-              <div className="rv-srow"><span className="rv-slabel">Tanggal</span><span className="rv-sval">{new Date(date).toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</span></div>
-              <div className="rv-srow"><span className="rv-slabel">Jam ({slots.length} jam)</span><span className="rv-sval">{slots.map(hhmm).join(", ")}</span></div>
-              <div className="rv-srow"><span className="rv-slabel">Sewa meja</span><span className="rv-sval">{rupiah(slotTotal)}</span></div>
-              {ADDONS.filter((a) => addons[a.id]).map((a) => (
-                <div className="rv-srow" key={a.id}><span className="rv-slabel">{a.name} ×{addons[a.id]}</span><span className="rv-sval">{rupiah(addons[a.id] * a.price)}</span></div>
-              ))}
-              <div className="rv-srow"><span className="rv-slabel">Nama</span><span className="rv-sval">{form.name}</span></div>
-              <div className="rv-srow"><span className="rv-slabel">WhatsApp</span><span className="rv-sval">{form.phone}</span></div>
-              <div className="rv-srow"><span className="rv-slabel">Jumlah pemain</span><span className="rv-sval">{form.players} orang</span></div>
-              {form.email && <div className="rv-srow"><span className="rv-slabel">Email</span><span className="rv-sval">{form.email}</span></div>}
-              {form.notes && <div className="rv-srow"><span className="rv-slabel">Catatan</span><span className="rv-sval">{form.notes}</span></div>}
-              <div className="rv-srow rv-total"><span className="rv-slabel" style={{ color: "#1c1a16", fontWeight: 700 }}>Total bayar</span><span className="rv-sval">{rupiah(total)}</span></div>
-            </div>
-            {submitError && <div className="rv-conflict" style={{ marginTop: 14, marginBottom: 0 }}>{submitError}</div>}
-          </div>
-        )}
-
-        {/* STEP 4 — payment */}
-        {step === 4 && booking && (
-          <div className="rv-card rv-center">
-            <div className="rv-check">
-              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
-            </div>
-            <h2 className="rv-h">Reservasi dibuat</h2>
-            <p className="rv-sub">Kode <b>{booking.code}</b>. Selesaikan pembayaran untuk mengunci meja kamu.</p>
-
-            <div className="rv-va">
-              <div className="rv-va-label">BCA Virtual Account</div>
-              <div className="rv-va-num">{booking.va}</div>
-              <div className="rv-va-amt">Total tagihan: <b>{rupiah(booking.total)}</b></div>
-              <button className="rv-copy" onClick={copyVA}>{copied ? "Tersalin ✓" : "Salin nomor"}</button>
-            </div>
-
-            <div className="rv-note">
-              <span>ℹ️</span>
-              <span>Buka BCA Mobile / m-BCA → <b>m-Transfer → BCA Virtual Account</b> → masukkan nomor di atas → pastikan nominal <b>{rupiah(booking.total)}</b>. Meja ditahan sementara sampai pembayaran masuk. Konfirmasi dikirim ke WhatsApp{booking.email ? " & email" : ""}.</span>
-            </div>
-
-            {BUSINESS_WHATSAPP && (
-              <a className="rv-btn primary" href={waLink(BUSINESS_WHATSAPP) || undefined}
-                 target="_blank" rel="noopener noreferrer"
-                 style={{ display: "block", textAlign: "center", textDecoration: "none", marginTop: 14 }}>
-                Kirim bukti transfer ke WhatsApp
-              </a>
-            )}
-
-            <div className="rv-nav"><button className="rv-btn ghost" onClick={reset} style={{ flex: 1 }}>Buat reservasi baru</button></div>
-            <p className="rv-demo">Prototype: nomor VA masih contoh. Nomor asli & status pembayaran muncul setelah payment gateway (Xendit/Midtrans) tersambung.</p>
-          </div>
-        )}
-
-        {step < 4 && (
-          <div className="rv-nav">
-            {step > 0 && <button className="rv-btn ghost" onClick={back} disabled={submitting}>Kembali</button>}
-            {step < 3 && <button className="rv-btn primary" onClick={next} disabled={!canNext}>Lanjut{step === 1 && slots.length > 0 ? ` · ${rupiah(slotTotal)}` : ""}</button>}
-            {step === 3 && <button className="rv-btn primary" onClick={createBooking} disabled={submitting}>{submitting ? "Memproses…" : `Bayar ${rupiah(total)}`}</button>}
-          </div>
-        )}
-      </div>
-    </div>
-  );
+    function bumpAddon(id, d, max) {
+        setAddons((a) => ({ ...a, [id]: Math.min(max, Math.max(0, (a[id] || 0) + d)) }));
+    }
+    const isBooked = (h) => bookedHours.includes(h);
+    const canNext = (step === 0 && branch) ||
+        (step === 1 && table && date && slots.length > 0) ||
+        (step === 2 && Object.keys(errors).length === 0) ||
+        step === 3;
+    function next() {
+        if (step === 2) {
+            setTouched(true);
+            if (Object.keys(errors).length)
+                return;
+        }
+        if (step < 3)
+            setStep((s) => s + 1);
+    }
+    function back() { setStep((s) => Math.max(0, s - 1)); }
+    async function createBooking() {
+        const hoursSel = [...slots];
+        const va = BCA_COMPANY_CODE + form.phone.replace(/\D/g, "").slice(-9).padStart(9, "0") + Math.floor(Math.random() * 10);
+        const code = "FUFU-" + Math.random().toString(36).slice(2, 8).toUpperCase();
+        const chosenAddons = ADDONS.filter((a) => addons[a.id]).map((a) => ({ name: a.name, qty: addons[a.id], price: a.price }));
+        const snapshot = {
+            va, code, total, branchId: branch.id, tableId: table.id,
+            branch: branch.name, table: table.name, date,
+            hours: hoursSel, slots: hoursSel.map(hhmm), duration: hoursSel.length,
+            addons: chosenAddons, ...form,
+        };
+        if (true) { // deployed: selalu kirim ke server
+            setSubmitting(true);
+            setSubmitError("");
+            try {
+                const res = await fetch(`${API_BASE}/api/reservations`, {
+                    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(snapshot),
+                });
+                const data = await res.json().catch(() => ({}));
+                setSubmitting(false);
+                if (res.ok && data.ok) {
+                    setBooking({ ...snapshot, va: data.va || va, code: data.code || code });
+                    setStep(4);
+                    return;
+                }
+                if (res.status === 409) {
+                    // Slot taken by someone else while booking — bounce back and refresh.
+                    setConflict(data.conflict || []);
+                    setSlots([]);
+                    setStep(1);
+                    setRefreshKey((k) => k + 1);
+                    return;
+                }
+                setSubmitError("Gagal membuat reservasi. Silakan coba lagi.");
+            }
+            catch {
+                setSubmitting(false);
+                setSubmitError("Tidak bisa terhubung ke server. Coba lagi.");
+            }
+            return;
+        }
+        // Preview mode (no backend connected yet).
+        setBooking(snapshot);
+        setStep(4);
+    }
+    function copyVA() {
+        var _a;
+        if (!booking)
+            return;
+        (_a = navigator.clipboard) === null || _a === void 0 ? void 0 : _a.writeText(booking.va);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+    }
+    function reset() {
+        setStep(0);
+        setBranchId(null);
+        setTableId(null);
+        setDate("");
+        setSlots([]);
+        setAddons({});
+        setForm({ name: "", phone: "", email: "", players: "4", notes: "" });
+        setTouched(false);
+        setBooking(null);
+        setConflict([]);
+        setSubmitError("");
+    }
+    return (React.createElement("div", { className: "rv-root" },
+        React.createElement("style", null, styles),
+        React.createElement("div", { className: "rv-shell" },
+            React.createElement("header", { className: "rv-head" },
+                React.createElement("img", { className: "rv-logo", src: LOGO, alt: BUSINESS.name }),
+                React.createElement("div", { className: "rv-tag" }, BUSINESS.tagline)),
+            step < 4 && (React.createElement("div", { className: "rv-steps" }, STEPS.map((label, i) => (React.createElement("div", { key: label, className: `rv-step ${i === step ? "active" : ""} ${i < step ? "done" : ""}` },
+                React.createElement("div", { className: "rv-step-bar" }),
+                React.createElement("div", { className: "rv-step-label" }, label)))))),
+            step === 0 && (React.createElement("div", { className: "rv-card" },
+                React.createElement("h2", { className: "rv-h" }, "Pilih cabang"),
+                React.createElement("p", { className: "rv-sub" }, "Reservasi diproses di cabang yang kamu pilih."),
+                BRANCHES.map((b) => (React.createElement("button", { key: b.id, className: `rv-branch ${branchId === b.id ? "sel" : ""}`, onClick: () => pickBranch(b.id) },
+                    React.createElement("span", { className: "rv-radio" },
+                        React.createElement("i", null)),
+                    React.createElement("span", null,
+                        React.createElement("div", { className: "rv-branch-name" }, b.name),
+                        React.createElement("div", { className: "rv-branch-meta" },
+                            b.address,
+                            React.createElement("br", null),
+                            b.tables.length,
+                            " meja \u00B7 buka ",
+                            hhmm(b.open),
+                            "\u2013",
+                            hhmm(b.close)))))))),
+            step === 1 && (React.createElement("div", { className: "rv-card" },
+                React.createElement("h2", { className: "rv-h" }, "Pilih meja & jam"),
+                React.createElement("p", { className: "rv-sub" }, branch.name),
+                React.createElement("div", { className: "rv-field" },
+                    React.createElement("label", { className: "rv-label" }, "Meja"),
+                    React.createElement("div", { className: "rv-pills" }, branch.tables.map((t) => (React.createElement("button", { key: t.id, className: `rv-pill ${tableId === t.id ? "sel" : ""}`, onClick: () => pickTable(t.id) },
+                        t.name,
+                        React.createElement("small", null, t.type)))))),
+                React.createElement("div", { className: "rv-field" },
+                    React.createElement("label", { className: "rv-label" }, "Tanggal main"),
+                    React.createElement("input", { className: "rv-input", type: "date", min: todayISO(), value: date, onChange: (e) => pickDate(e.target.value) })),
+                table && date && (React.createElement("div", { className: "rv-field" },
+                    conflict.length > 0 && (React.createElement("div", { className: "rv-conflict" },
+                        "Yah, jam ",
+                        conflict.map(hhmm).join(", "),
+                        " baru saja dipesan orang lain. Silakan pilih jam lain ya.")),
+                    React.createElement("label", { className: "rv-label" },
+                        "Jam ",
+                        weekend ? "(harga weekend)" : "(harga weekday)",
+                        " \u2014 bisa pilih lebih dari satu"),
+                    loadingSlots && React.createElement("div", { className: "rv-loading" }, "Memuat ketersediaan\u2026"),
+                    React.createElement("div", { className: "rv-grid" }, hours.map((h) => {
+                        const bk = isBooked(h);
+                        const sel = slots.includes(h);
+                        return (React.createElement("button", { key: h, disabled: bk, onClick: () => toggleSlot(h), className: `rv-slot ${sel ? "sel" : ""} ${bk ? "bk" : ""}` },
+                            React.createElement("div", { className: "t" }, hhmm(h)),
+                            React.createElement("div", { className: "p" }, bk ? "Penuh" : shortRp(slotPrice(h, weekend, table.mult)))));
+                    })),
+                    React.createElement("div", { className: "rv-legend" },
+                        React.createElement("span", null,
+                            React.createElement("i", { className: "rv-swatch", style: { background: "#fff", border: "1px solid #e8e0cf" } }),
+                            "Tersedia"),
+                        React.createElement("span", null,
+                            React.createElement("i", { className: "rv-swatch", style: { background: "#146c54" } }),
+                            "Dipilih"),
+                        React.createElement("span", null,
+                            React.createElement("i", { className: "rv-swatch", style: { background: "#f3efe3" } }),
+                            "Penuh")),
+                    slots.length > 0 && (React.createElement("div", { className: "rv-bar" },
+                        React.createElement("span", { className: "l" },
+                            slots.length,
+                            " jam \u00B7 ",
+                            table.name),
+                        React.createElement("span", { className: "v" }, rupiah(slotTotal)))))))),
+            step === 2 && (React.createElement("div", { className: "rv-card" },
+                React.createElement("h2", { className: "rv-h" }, "Pesanan & data diri"),
+                React.createElement("p", { className: "rv-sub" }, "Tambah menu kalau mau, lalu isi kontak untuk konfirmasi."),
+                React.createElement("label", { className: "rv-label" },
+                    "Menu tambahan ",
+                    React.createElement("span", { className: "rv-opt" }, "(opsional)")),
+                ADDONS.map((a) => (React.createElement("div", { key: a.id, className: "rv-addon" },
+                    React.createElement("div", null,
+                        React.createElement("div", { className: "rv-addon-name" }, a.name),
+                        React.createElement("div", { className: "rv-addon-price" }, rupiah(a.price))),
+                    React.createElement("div", { className: "rv-stepper" },
+                        React.createElement("button", { className: "rv-sbtn", onClick: () => bumpAddon(a.id, -1, a.max), disabled: !addons[a.id] }, "\u2212"),
+                        React.createElement("span", { className: "rv-qty" }, addons[a.id] || 0),
+                        React.createElement("button", { className: "rv-sbtn", onClick: () => bumpAddon(a.id, 1, a.max), disabled: (addons[a.id] || 0) >= a.max }, "+"))))),
+                React.createElement("div", { className: "rv-divider" }),
+                React.createElement("div", { className: "rv-field" },
+                    React.createElement("label", { className: "rv-label" }, "Nama lengkap"),
+                    React.createElement("input", { className: `rv-input ${touched && errors.name ? "err" : ""}`, value: form.name, onChange: set("name"), placeholder: "Nama kamu" }),
+                    touched && errors.name && React.createElement("div", { className: "rv-errmsg" }, errors.name)),
+                React.createElement("div", { className: "rv-row2" },
+                    React.createElement("div", { className: "rv-field" },
+                        React.createElement("label", { className: "rv-label" }, "Nomor WhatsApp"),
+                        React.createElement("input", { className: `rv-input ${touched && errors.phone ? "err" : ""}`, value: form.phone, onChange: set("phone"), placeholder: "0812xxxxxxx", inputMode: "tel" }),
+                        touched && errors.phone && React.createElement("div", { className: "rv-errmsg" }, errors.phone)),
+                    React.createElement("div", { className: "rv-field" },
+                        React.createElement("label", { className: "rv-label" }, "Jumlah pemain"),
+                        React.createElement("select", { className: "rv-select", value: form.players, onChange: set("players") }, [1, 2, 3, 4].map((n) => React.createElement("option", { key: n, value: n },
+                            n,
+                            " orang"))))),
+                React.createElement("div", { className: "rv-field" },
+                    React.createElement("label", { className: "rv-label" },
+                        "Email ",
+                        React.createElement("span", { className: "rv-opt" }, "(opsional)")),
+                    React.createElement("input", { className: `rv-input ${touched && errors.email ? "err" : ""}`, value: form.email, onChange: set("email"), placeholder: "email@contoh.com", inputMode: "email" }),
+                    touched && errors.email && React.createElement("div", { className: "rv-errmsg" }, errors.email)),
+                React.createElement("div", { className: "rv-field" },
+                    React.createElement("label", { className: "rv-label" },
+                        "Catatan ",
+                        React.createElement("span", { className: "rv-opt" }, "(opsional)")),
+                    React.createElement("input", { className: "rv-input", value: form.notes, onChange: set("notes"), placeholder: "Permintaan khusus\u2026" })))),
+            step === 3 && (React.createElement("div", { className: "rv-card" },
+                React.createElement("h2", { className: "rv-h" }, "Cek reservasi kamu"),
+                React.createElement("p", { className: "rv-sub" }, "Pastikan semua benar sebelum lanjut ke pembayaran."),
+                React.createElement("div", { className: "rv-summary" },
+                    React.createElement("div", { className: "rv-srow" },
+                        React.createElement("span", { className: "rv-slabel" }, "Cabang"),
+                        React.createElement("span", { className: "rv-sval" }, branch.name)),
+                    React.createElement("div", { className: "rv-srow" },
+                        React.createElement("span", { className: "rv-slabel" }, "Meja"),
+                        React.createElement("span", { className: "rv-sval" },
+                            table.name,
+                            " \u00B7 ",
+                            table.type)),
+                    React.createElement("div", { className: "rv-srow" },
+                        React.createElement("span", { className: "rv-slabel" }, "Tanggal"),
+                        React.createElement("span", { className: "rv-sval" }, new Date(date).toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" }))),
+                    React.createElement("div", { className: "rv-srow" },
+                        React.createElement("span", { className: "rv-slabel" },
+                            "Jam (",
+                            slots.length,
+                            " jam)"),
+                        React.createElement("span", { className: "rv-sval" }, slots.map(hhmm).join(", "))),
+                    React.createElement("div", { className: "rv-srow" },
+                        React.createElement("span", { className: "rv-slabel" }, "Sewa meja"),
+                        React.createElement("span", { className: "rv-sval" }, rupiah(slotTotal))),
+                    ADDONS.filter((a) => addons[a.id]).map((a) => (React.createElement("div", { className: "rv-srow", key: a.id },
+                        React.createElement("span", { className: "rv-slabel" },
+                            a.name,
+                            " \u00D7",
+                            addons[a.id]),
+                        React.createElement("span", { className: "rv-sval" }, rupiah(addons[a.id] * a.price))))),
+                    React.createElement("div", { className: "rv-srow" },
+                        React.createElement("span", { className: "rv-slabel" }, "Nama"),
+                        React.createElement("span", { className: "rv-sval" }, form.name)),
+                    React.createElement("div", { className: "rv-srow" },
+                        React.createElement("span", { className: "rv-slabel" }, "WhatsApp"),
+                        React.createElement("span", { className: "rv-sval" }, form.phone)),
+                    React.createElement("div", { className: "rv-srow" },
+                        React.createElement("span", { className: "rv-slabel" }, "Jumlah pemain"),
+                        React.createElement("span", { className: "rv-sval" },
+                            form.players,
+                            " orang")),
+                    form.email && React.createElement("div", { className: "rv-srow" },
+                        React.createElement("span", { className: "rv-slabel" }, "Email"),
+                        React.createElement("span", { className: "rv-sval" }, form.email)),
+                    form.notes && React.createElement("div", { className: "rv-srow" },
+                        React.createElement("span", { className: "rv-slabel" }, "Catatan"),
+                        React.createElement("span", { className: "rv-sval" }, form.notes)),
+                    React.createElement("div", { className: "rv-srow rv-total" },
+                        React.createElement("span", { className: "rv-slabel", style: { color: "#1c1a16", fontWeight: 700 } }, "Total bayar"),
+                        React.createElement("span", { className: "rv-sval" }, rupiah(total)))),
+                submitError && React.createElement("div", { className: "rv-conflict", style: { marginTop: 14, marginBottom: 0 } }, submitError))),
+            step === 4 && booking && (React.createElement("div", { className: "rv-card rv-center" },
+                React.createElement("div", { className: "rv-check" },
+                    React.createElement("svg", { width: "26", height: "26", viewBox: "0 0 24 24", fill: "none", strokeWidth: "3", strokeLinecap: "round", strokeLinejoin: "round" },
+                        React.createElement("path", { d: "M20 6 9 17l-5-5" }))),
+                React.createElement("h2", { className: "rv-h" }, "Reservasi dibuat"),
+                React.createElement("p", { className: "rv-sub" },
+                    "Kode ",
+                    React.createElement("b", null, booking.code),
+                    ". Selesaikan pembayaran untuk mengunci meja kamu."),
+                React.createElement("div", { className: "rv-va" },
+                    React.createElement("div", { className: "rv-va-label" }, "BCA Virtual Account"),
+                    React.createElement("div", { className: "rv-va-num" }, booking.va),
+                    React.createElement("div", { className: "rv-va-amt" },
+                        "Total tagihan: ",
+                        React.createElement("b", null, rupiah(booking.total))),
+                    React.createElement("button", { className: "rv-copy", onClick: copyVA }, copied ? "Tersalin ✓" : "Salin nomor")),
+                React.createElement("div", { className: "rv-note" },
+                    React.createElement("span", null, "\u2139\uFE0F"),
+                    React.createElement("span", null,
+                        "Buka BCA Mobile / m-BCA \u2192 ",
+                        React.createElement("b", null, "m-Transfer \u2192 BCA Virtual Account"),
+                        " \u2192 masukkan nomor di atas \u2192 pastikan nominal ",
+                        React.createElement("b", null, rupiah(booking.total)),
+                        ". Meja ditahan sementara sampai pembayaran masuk. Konfirmasi dikirim ke WhatsApp",
+                        booking.email ? " & email" : "",
+                        ".")),
+                BUSINESS_WHATSAPP && (React.createElement("a", { className: "rv-btn primary", href: waLink(BUSINESS_WHATSAPP) || undefined, target: "_blank", rel: "noopener noreferrer", style: { display: "block", textAlign: "center", textDecoration: "none", marginTop: 14 } }, "Kirim bukti transfer ke WhatsApp")),
+                React.createElement("div", { className: "rv-nav" },
+                    React.createElement("button", { className: "rv-btn ghost", onClick: reset, style: { flex: 1 } }, "Buat reservasi baru")),
+                React.createElement("p", { className: "rv-demo" }, "Prototype: nomor VA masih contoh. Nomor asli & status pembayaran muncul setelah payment gateway (Xendit/Midtrans) tersambung."))),
+            step < 4 && (React.createElement("div", { className: "rv-nav" },
+                step > 0 && React.createElement("button", { className: "rv-btn ghost", onClick: back, disabled: submitting }, "Kembali"),
+                step < 3 && React.createElement("button", { className: "rv-btn primary", onClick: next, disabled: !canNext },
+                    "Lanjut",
+                    step === 1 && slots.length > 0 ? ` · ${rupiah(slotTotal)}` : ""),
+                step === 3 && React.createElement("button", { className: "rv-btn primary", onClick: createBooking, disabled: submitting }, submitting ? "Memproses…" : `Bayar ${rupiah(total)}`))))));
 }
+ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App, null));
 
-
-ReactDOM.createRoot(document.getElementById("root")).render(<App />);
 </script>
 </body>
 </html>
