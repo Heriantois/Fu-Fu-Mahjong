@@ -284,6 +284,7 @@ app.get("/health", (_req, res) => res.send("Reservasi backend jalan ✅"));
 app.get("/", (_req, res) => res.sendFile(path.join(__dirname, "index.html")));
 app.get("/admin", (_req, res) => res.sendFile(path.join(__dirname, "admin.html")));
 app.get("/fufu-logo.png", (_req, res) => res.sendFile(path.join(__dirname, "fufu-logo.png")));
+app.use("/img", express.static(path.join(__dirname, "img"))); // foto menu (opsional): taruh file di folder "img"
 
 app.get("/api/availability", (req, res) => {
   const { branch, table, date } = req.query;
