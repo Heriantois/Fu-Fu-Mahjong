@@ -114,10 +114,10 @@ export function createReservation(b) {
     );
     let uniqueCode = null, payable = null;
     for (let i = 0; i < 999; i++) {
-      const code = 1 + Math.floor(Math.random() * 999);
+      const code = 1 + Math.floor(Math.random() * 499);
       if (!used.has(base + code)) { uniqueCode = code; payable = base + code; break; }
     }
-    if (payable === null) { uniqueCode = 1 + Math.floor(Math.random() * 999); payable = base + uniqueCode; }
+    if (payable === null) { uniqueCode = 1 + Math.floor(Math.random() * 499); payable = base + uniqueCode; }
 
     const info = insertReservation.run({
       code: b.code, branch_id: b.branchId, branch_name: b.branch,
