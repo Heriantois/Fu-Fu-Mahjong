@@ -374,8 +374,7 @@ app.post("/api/reservations", async (req, res) => {
     expiresAt: result.expiresAt,
   });
 
-  if (body.email) safeSend({ to: body.email, subject: `Reservasi ${code} — ${BUSINESS_NAME}`, html: buildBookingHTML(full) });
-  if (ownerInbox) safeSend({ to: ownerInbox, subject: `📅 Booking baru: ${body.table} · ${body.date} (${code})`, html: buildOwnerHTML(full, "pending") });
+  // Email dinonaktifkan — notifikasi lewat WhatsApp saja.
   safeWA(body.phone, waBookingText(full));
 });
 
@@ -396,8 +395,7 @@ app.post("/api/reservations/:code/pay", (req, res) => {
     email: booking.email, addons: booking.addons, notes: booking.notes,
     total: booking.total, payable: booking.payable,
   };
-  if (booking.email) safeSend({ to: booking.email, subject: `Invoice ${booking.code} — ${BUSINESS_NAME}`, html: buildInvoiceHTML(forEmail) });
-  if (ownerInbox) safeSend({ to: ownerInbox, subject: `✅ Lunas: ${booking.table_name} (${booking.code})`, html: buildOwnerHTML(forEmail, "paid") });
+  // Email dinonaktifkan — invoice + S&K dikirim lewat WhatsApp.
   safeWA(booking.phone, waPaidText(forEmail));
 
   res.json({ ok: true });
@@ -417,4 +415,4 @@ app.get("/invoice/:code", (req, res) => {
   res.send(buildInvoicePage(b));
 });
 
-app.listen(PORT, () => console.log(`Server listening on http://localhost:${PORT}`));
+app.listen(PORT, () => console.log(`Server listening on http://localhost:${PORT}  [BUILD: wa-noemail-v2]`));
