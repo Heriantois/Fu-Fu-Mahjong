@@ -227,14 +227,17 @@ function waNumber(phone) {
 async function sendWhatsApp(phone, message) {
   if (!FONNTE_TOKEN) { console.warn("[wa] FONNTE_TOKEN belum diset — WhatsApp dilewati."); return { skipped: true }; }
   const target = waNumber(phone);
-  if (!target) return { skipped: true };
+  if (!target) { console.warn(`[wa] nomor tidak valid, dilewati (input: '${phone}')`); return { skipped: true }; }
+  console.log(`[wa] mengirim ke ${target} …`);
   const r = await fetch("https://api.fonnte.com/send", {
     method: "POST",
     headers: { Authorization: FONNTE_TOKEN, "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({ target, message }).toString(),
   });
-  if (!r.ok) throw new Error(`Fonnte ${r.status}: ${await r.text()}`);
-  return r.json();
+  const text = await r.text();
+  if (!r.ok) throw new Error(`Fonnte ${r.status}: ${text}`);
+  console.log(`[wa] terkirim ke ${target} — respons Fonnte: ${text}`);
+  return { ok: true };
 }
 const safeWA = (phone, message) => sendWhatsApp(phone, message).catch((err) => console.error("[wa] error:", err.message));
 
@@ -415,4 +418,4 @@ app.get("/invoice/:code", (req, res) => {
   res.send(buildInvoicePage(b));
 });
 
-app.listen(PORT, () => console.log(`Server listening on http://localhost:${PORT}  [BUILD: wa-noemail-v2]`));
+app.listen(PORT, () => console.log(`Server listening on http://localhost:${PORT}  [BUILD: wa-debug-v3]`));
