@@ -17,7 +17,7 @@ import nodemailer from "nodemailer";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
-  getBookedHours, createReservation, markPaid, markCancelled, listReservations,
+  getBookedHours, createReservation, markPaid, markCancelled, listReservations, getByCode,
 } from "./db.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -61,8 +61,9 @@ const mailer = (SMTP_USER && SMTP_PASS)
 // Peraturan bermain (muncul di email invoice). Silakan edit sesuai kebutuhan.
 const HOUSE_RULES = [
   "Reservasi berlaku untuk 1 meja (maksimal 4 pemain).",
-  "Mohon datang tepat waktu. Meja ditahan maksimal 15 menit dari jam mulai.",
+  "Mohon datang tepat waktu. Meja ditahan maksimal 15 menit dari jam mulai; lewat dari itu dianggap hangus tanpa pengembalian dana.",
   "Waktu sewa dihitung per jam sesuai reservasi; perpanjangan tergantung ketersediaan.",
+  "Pembayaran yang sudah masuk tidak dapat dikembalikan (no refund).",
   "Jaga kebersihan meja dan kelengkapan set mahjong. Kerusakan atau kehilangan menjadi tanggung jawab penyewa.",
   "Dilarang membawa makanan/minuman dari luar; silakan pesan dari menu kafe.",
   "Mohon menjaga ketenangan dan kenyamanan bersama pengunjung lain.",
@@ -258,16 +259,77 @@ function waBookingText(b) {
 }
 function waPaidText(b) {
   const jam = (b.slots || []).join(", ");
+  const rules = HOUSE_RULES.map((r, i) => `${i + 1}. ${r}`).join("\n");
   return [
-    `Pembayaran diterima ✅ Reservasi kamu di ${BUSINESS_NAME} sudah TERKONFIRMASI.`,
+    `*INVOICE — LUNAS* ✅`,
+    `${BUSINESS_NAME}`,
     ``,
     `Kode: ${b.code}`,
+    `Cabang: ${b.branch}`,
     `Meja: ${b.table}`,
     `Tanggal: ${formatDateID(b.date)}`,
     `Jam: ${jam}`,
+    `Total dibayar: ${rupiah(b.payable || b.total)}`,
     ``,
-    `Sampai jumpa di meja! 🀄`,
+    `*Peraturan Bermain (S&K):*`,
+    rules,
+    ``,
+    `Dengan membayar, kamu dianggap menyetujui peraturan di atas.`,
+    `Terima kasih, sampai jumpa di meja! 🀄`,
   ].join("\n");
+}
+
+// Printable invoice page (owner opens with ?key=ADMIN_KEY, then Print / Save as PDF).
+function buildInvoicePage(b) {
+  const jam = (b.hours || []).map((h) => `${String(h).padStart(2, "0")}:00`).join(", ");
+  const addons = b.addons || [];
+  const addonsTotal = addons.reduce((s, a) => s + a.qty * a.price, 0);
+  const sewa = (b.total || 0) - addonsTotal;
+  const statusLabel = b.status === "paid" ? "LUNAS" : (b.status || "").toUpperCase();
+  const itemsHTML = [
+    `<tr><td>Sewa meja — ${b.table_name} (${(b.hours || []).length} jam)</td><td class="r">${rupiah(sewa)}</td></tr>`,
+    ...addons.map((a) => `<tr><td>${a.name} ×${a.qty}</td><td class="r">${rupiah(a.qty * a.price)}</td></tr>`),
+  ].join("");
+  const rulesHTML = HOUSE_RULES.map((r) => `<li>${r}</li>`).join("");
+  return `<!DOCTYPE html><html lang="id"><head><meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1"><title>Invoice ${b.code}</title>
+  <style>
+   *{box-sizing:border-box} body{font-family:Arial,Helvetica,sans-serif;color:#1c1a16;background:#f4f1e8;margin:0;padding:24px;}
+   .inv{max-width:640px;margin:0 auto;background:#fff;border:1px solid #e3dccb;border-radius:12px;padding:30px;}
+   .top{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #146c54;padding-bottom:14px;margin-bottom:16px;}
+   .biz{font-size:20px;font-weight:800;color:#146c54;} .sub{color:#6b6459;font-size:12px;margin-top:2px;}
+   .badge{font-size:12px;font-weight:800;padding:5px 12px;border-radius:999px;background:#e7f4ed;color:#146c54;white-space:nowrap;}
+   h2{font-size:13px;margin:18px 0 8px;text-transform:uppercase;letter-spacing:.04em;color:#6b6459;}
+   table{width:100%;border-collapse:collapse;font-size:13.5px;} td{padding:8px 0;border-bottom:1px solid #eee;} .r{text-align:right;}
+   .tot td{border-top:2px solid #1c1a16;border-bottom:none;font-weight:800;font-size:16px;padding-top:10px;}
+   .meta{font-size:13px;color:#3f463f;line-height:1.8;}
+   ol{font-size:12.5px;color:#3f463f;line-height:1.6;padding-left:18px;margin:0;}
+   .agree{font-size:11px;color:#8a847a;margin-top:18px;border-top:1px dashed #ddd;padding-top:12px;}
+   .btnbar{max-width:640px;margin:0 auto 14px;text-align:right;}
+   .pbtn{font:inherit;font-weight:700;background:#146c54;color:#fff;border:none;border-radius:9px;padding:10px 18px;cursor:pointer;}
+   @media print{ body{background:#fff;padding:0;} .inv{border:none;border-radius:0;} .btnbar{display:none;} }
+  </style></head><body>
+  <div class="btnbar"><button class="pbtn" onclick="window.print()">🖨️ Cetak / Simpan PDF</button></div>
+  <div class="inv">
+    <div class="top">
+      <div><div class="biz">${BUSINESS_NAME}</div><div class="sub">Invoice Reservasi</div></div>
+      <div class="badge">${statusLabel}</div>
+    </div>
+    <div class="meta">
+      <b>No. Invoice:</b> ${b.code}<br>
+      <b>Tanggal main:</b> ${formatDateID(b.date)}<br>
+      <b>Jam:</b> ${jam}<br>
+      <b>Cabang:</b> ${b.branch_name}<br>
+      <b>Nama:</b> ${b.name} &nbsp;·&nbsp; <b>WA:</b> ${b.phone}
+    </div>
+    <h2>Rincian</h2>
+    <table>${itemsHTML}
+      <tr class="tot"><td>Total ${b.status === "paid" ? "dibayar" : "tagihan"}</td><td class="r">${rupiah(b.payable || b.total)}</td></tr>
+    </table>
+    <h2>Peraturan Bermain — Terms &amp; Conditions</h2>
+    <ol>${rulesHTML}</ol>
+    <div class="agree">Dengan melakukan pembayaran, pelanggan dianggap telah membaca dan menyetujui seluruh peraturan di atas.</div>
+  </div></body></html>`;
 }
 
 function requireAdmin(req, res) {
@@ -345,6 +407,14 @@ app.post("/api/reservations/:code/cancel", (req, res) => {
   if (!requireAdmin(req, res)) return;
   const ok = markCancelled(req.params.code);
   res.json({ ok });
+});
+
+// Printable invoice (owner-only): /invoice/CODE?key=ADMIN_KEY
+app.get("/invoice/:code", (req, res) => {
+  if (!requireAdmin(req, res)) return;
+  const b = getByCode(req.params.code);
+  if (!b) return res.status(404).send("Reservasi tidak ditemukan.");
+  res.send(buildInvoicePage(b));
 });
 
 app.listen(PORT, () => console.log(`Server listening on http://localhost:${PORT}`));

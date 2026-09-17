@@ -126,14 +126,15 @@
       var b = badge[x.status] || ["b-expired", x.status];
       var wa = waHref(x.phone);
       var cust = x.name + '<br><span class="muted">'+(x.phone||"")+'</span>' + (wa?' · <a class="wa" href="'+wa+'" target="_blank">WA</a>':'');
+      var printLink = '<a class="btn ghost small" href="/invoice/'+x.code+'?key='+encodeURIComponent(KEY)+'" target="_blank">Cetak</a>';
       var acts = "";
       if(x.status==="pending"){
         acts = '<button class="btn primary small" onclick="markPaid(\''+x.code+'\')">Tandai Lunas</button> '+
-               '<button class="btn danger small" onclick="cancelBk(\''+x.code+'\')">Batal</button>';
+               '<button class="btn danger small" onclick="cancelBk(\''+x.code+'\')">Batal</button> '+ printLink;
       } else if(x.status==="paid"){
-        acts = '<button class="btn danger small" onclick="cancelBk(\''+x.code+'\')">Batal</button>';
+        acts = printLink + ' <button class="btn danger small" onclick="cancelBk(\''+x.code+'\')">Batal</button>';
       } else {
-        acts = '<span class="muted">—</span>';
+        acts = printLink;
       }
       html += '<tr>'+
         '<td data-l="Tanggal">'+fmtDate(x.date)+'<br><span class="muted">'+x.code+'</span></td>'+
