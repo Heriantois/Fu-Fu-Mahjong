@@ -28,13 +28,12 @@ const BRANCHES = [
         address: "Ruko Sentra Niaga Blok SG 3 No. 8, Lt. 2, Sinpasa",
         open: 8, close: 22,
         tables: [
-            { id: "gs1", name: "Meja 1", type: "Reguler" },
-            { id: "gs2", name: "Meja 2", type: "Reguler" },
-            { id: "gs3", name: "Meja 3", type: "Reguler" },
-            { id: "gs4", name: "Meja 4", type: "Reguler" },
-            { id: "gs5", name: "Meja 5", type: "Reguler" },
-            { id: "gs6", name: "Meja 6", type: "Reguler" },
-            { id: "gs7", name: "Meja 7", type: "Reguler" },
+            { id: "gs1", name: "Table 1", type: "Reguler" },
+            { id: "gs2", name: "Table 2", type: "Reguler" },
+            { id: "gs3", name: "Table 3", type: "Reguler" },
+            { id: "gs4", name: "Table 4", type: "Reguler" },
+            { id: "gs5", name: "Table 5", type: "Reguler" },
+            { id: "gs6", name: "Table 6", type: "Reguler" },
         ],
     },
     {
@@ -50,7 +49,7 @@ const BRANCHES = [
         ],
     },
 ];
-// Tanggal libur nasional (weekend rate berlaku di Gading Serpong).
+// Tanggal libur nasional (Weekend rate berlaku di Gading Serpong).
 // Isi sesuai kalender resmi. Format "YYYY-MM-DD".
 const PUBLIC_HOLIDAYS = [
     "2026-01-01", // Tahun Baru
@@ -64,18 +63,29 @@ function isHoliday(iso) { return PUBLIC_HOLIDAYS.indexOf(iso) !== -1; }
 function isGSWeekend(iso) { const d = new Date(iso).getDay(); return d === 5 || d === 6 || d === 0 || isHoliday(iso); }
 function slotPriceFor(branch, table, iso) {
     if (branch.id === "bsd")
-        return table.type === "VIP" ? 75000 : 50000;
+        return table.type === "VIP" ? 85000 : 75000;
     if (branch.id === "gs")
         return isGSWeekend(iso) ? 60000 : 50000;
     return 50000;
 }
-// Gratis es teh: Gading Serpong, weekday, jam 08:00–14:59.
+// Gratis Es Teh 1 Pitcher: Gading Serpong, Weekday, jam 08:00–14:59.
 function freeIceTea(branch, iso, hour) {
     return branch.id === "gs" && !isGSWeekend(iso) && hour < 15;
 }
 // Menu tambahan (F&B). Ganti sesuai menu asli.
 const ADDONS = [
-    { id: "teh", name: "Teh Poci (1 teko)", price: 35000, max: 10 },
+    { id: "Indomie", name: "Indomie Goreng", price: 8,000, max: 20 },
+    { id: "Indomie", name: "Indomie Goreng + Telur", price: 12,000, max: 20 },
+    { id: "Indomie", name: "Indomie Rebus", price: 8,000, max: 20 },
+    { id: "Indomie", name: "Indomie Rebus + Telur", price: 12,000, max: 20 },
+    { id: "Gorengan", name: "Singkong Goreng", price: 21,000, max: 20 },
+    { id: "Gorengan", name: "Bakso Goreng Fufu (Ayam Udang)", price: 26,000, max: 20 },
+    { id: "Gorengan", name: "Cakwe Goreng Ayam Udang", price: 24,000, max: 20 },
+    { id: "Gorengan", name: "Pisang Goreng Wijen", price: 21,000, max: 20 },
+    { id: "Gorengan", name: "Mini Wonton XXI wannabe", price: 22,000, max: 20 },
+    { id: "Gorengan", name: "Siomay Goreng Si Oma isi 4 pcs", price: 30,000, max: 20 },
+    { id: "Gorengan", name: "Pangsit Goreng Ayam Udang isi 3 pcs + mayonise", price: 20,000, max: 20 },
+    { id: "Kue", name: "Pia Favourite Oma Kacang Hijau isi 3 pcs", price: 20,000, max: 20 },
     { id: "kopi", name: "Kopi", price: 25000, max: 10 },
     { id: "snack", name: "Snack Platter", price: 75000, max: 6 },
     { id: "air", name: "Air Mineral", price: 10000, max: 10 },
