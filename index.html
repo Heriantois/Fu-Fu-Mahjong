@@ -92,7 +92,7 @@ const FEATURED = [
     { name: "Pia Oma Kacang Hijau", price: 20000, img: "" },
 ];
 // GANTI dengan nomor WhatsApp kafe (WAJIB untuk pesan F&B & kirim bukti transfer).
-const BUSINESS_WHATSAPP = "087863374940";
+const BUSINESS_WHATSAPP = "08XX-XXXX-XXXX";
 const API_BASE = "";
 const STEPS = ["Cabang", "Jadwal", "Detail", "Konfirmasi"];
 /* ===================================================================== */
@@ -275,6 +275,12 @@ function App() {
     const [fnbTable, setFnbTable] = useState(qTable);
     const [fnbName, setFnbName] = useState("");
     const [food, setFood] = useState({});
+    const [fnbPhone, setFnbPhone] = useState("");
+    const [fnbBooking, setFnbBooking] = useState(null);
+    const [fnbSubmitting, setFnbSubmitting] = useState(false);
+    const [fnbError, setFnbError] = useState("");
+    const [fnbRemaining, setFnbRemaining] = useState(0);
+    const [fnbCopied, setFnbCopied] = useState(false);
     const branch = BRANCHES.find((b) => b.id === branchId) || null;
     const table = branch ? branch.tables.find((t) => t.id === tableId) || null : null;
     const isToday = date === todayISO();
@@ -326,6 +332,14 @@ function App() {
         const id = setInterval(tick, 1000);
         return () => clearInterval(id);
     }, [step, booking]);
+    useEffect(() => {
+        if (!fnbBooking || !fnbBooking.expiresAt)
+            return;
+        const tick = () => setFnbRemaining(Math.round((fnbBooking.expiresAt - Date.now()) / 1000));
+        tick();
+        const id = setInterval(tick, 1000);
+        return () => clearInterval(id);
+    }, [fnbBooking]);
     const errors = useMemo(() => {
         const e = {};
         if (!form.name.trim())
@@ -420,27 +434,39 @@ function App() {
         setSubmitError("");
         setTab("info");
     }
-    function sendFoodOrder() {
-        const link = waLink(BUSINESS_WHATSAPP);
-        if (!link) {
-            alert("Nomor WhatsApp kafe belum diatur (BUSINESS_WHATSAPP).");
+    async function submitFnbOrder() {
+        const phone = fnbPhone.replace(/[\s-]/g, "");
+        if (!/^(\+?62|0)8\d{7,12}$/.test(phone)) {
+            setFnbError("Nomor WhatsApp tidak valid. Contoh: 0812xxxxxxx");
             return;
         }
-        const items = ADDONS.filter((a) => food[a.id]);
-        const lines = items.map((a) => `- ${a.name} x${food[a.id]} = ${rupiah(food[a.id] * a.price)}`);
-        const msg = [
-            `*Pesanan F&B — ${BUSINESS.name}*`,
-            fnbBranch ? `Cabang: ${fnbBranch.name}` : "",
-            `Meja: ${fnbTable}`,
-            fnbName ? `Nama: ${fnbName}` : "",
-            "",
-            ...lines,
-            "",
-            `Total: ${rupiah(foodTotal)}`,
-            "(bayar di kasir)",
-        ].filter((x) => x !== "").join("\n");
-        window.open(`${link}?text=${encodeURIComponent(msg)}`, "_blank");
+        const items = ADDONS.filter((a) => food[a.id]).map((a) => ({ name: a.name, qty: food[a.id], price: a.price }));
+        const payload = { branchId: fnbBranch.id, branch: fnbBranch.name, table_no: fnbTable, name: fnbName, phone: fnbPhone, addons: items, total: foodTotal };
+        setFnbSubmitting(true);
+        setFnbError("");
+        try {
+            const res = await fetch(`${API_BASE}/api/fnb-orders`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+            const data = await res.json().catch(() => ({}));
+            setFnbSubmitting(false);
+            if (res.ok && data.ok) {
+                setFnbBooking({ ...payload, ...data });
+                return;
+            }
+            setFnbError("Gagal membuat pesanan. Coba lagi.");
+        }
+        catch (e) {
+            setFnbSubmitting(false);
+            setFnbError("Tidak bisa terhubung ke server. Coba lagi.");
+        }
     }
+    function fnbCopyAmount() {
+        if (!fnbBooking)
+            return;
+        navigator.clipboard && navigator.clipboard.writeText(String(fnbBooking.payable));
+        setFnbCopied(true);
+        setTimeout(() => setFnbCopied(false), 1500);
+    }
+    function fnbResetOrder() { setFnbBooking(null); setFood({}); setFnbName(""); setFnbPhone(""); setFnbError(""); }
     const expired = step === 4 && booking && booking.expiresAt && remaining <= 0;
     // ---- QR SHEET (printable) ----
     if (qrMode) {
@@ -476,14 +502,14 @@ function App() {
                 React.createElement("button", { className: mode === "fnb" ? "on" : "", onClick: () => setMode("fnb") }, "Pesan F&B")),
             mode === "fnb" && (React.createElement("div", { className: "rv-card" },
                 React.createElement("h2", { className: "rv-h" }, "Pesan Makanan & Minuman"),
-                React.createElement("p", { className: "rv-sub" }, "Sudah di tempat? Pilih menu, isi nomor meja, lalu kirim ke WhatsApp kami. Bayar di kasir."),
-                !validQBranch && (React.createElement("div", { className: "rv-field" },
+                React.createElement("p", { className: "rv-sub" }, "Sudah di tempat? Pilih menu, isi nomor meja, lalu bayar via transfer. Pesanan disiapkan setelah pembayaran dikonfirmasi."),
+                !fnbBooking && !validQBranch && (React.createElement("div", { className: "rv-field" },
                     React.createElement("label", { className: "rv-label" }, "Cabang"),
                     React.createElement("div", { className: "rv-pills" }, BRANCHES.map((b) => (React.createElement("button", { key: b.id, className: `rv-pill ${fnbBranchId === b.id ? "sel" : ""}`, onClick: () => setFnbBranchId(b.id) }, b.name)))))),
-                validQBranch && fnbBranch && (React.createElement("p", { className: "rv-sub", style: { marginTop: -6 } },
+                !fnbBooking && validQBranch && fnbBranch && (React.createElement("p", { className: "rv-sub", style: { marginTop: -6 } },
                     "Cabang: ",
                     React.createElement("b", null, fnbBranch.name))),
-                fnbBranch && (React.createElement("div", null,
+                !fnbBooking && fnbBranch && (React.createElement("div", null,
                     groupedAddons().map((g, gi) => (React.createElement("div", { key: g.cat },
                         React.createElement("div", { className: `rv-cat ${gi === 0 ? "first" : ""}` }, g.cat),
                         g.items.map((a) => (React.createElement("div", { key: a.id, className: "rv-addon" },
@@ -498,19 +524,66 @@ function App() {
                     React.createElement("div", { className: "rv-field" },
                         React.createElement("label", { className: "rv-label" }, "Nomor meja"),
                         React.createElement("input", { className: "rv-input", value: fnbTable, onChange: (e) => setFnbTable(e.target.value), placeholder: "mis. Table 3 / VIP 1" })),
-                    React.createElement("div", { className: "rv-field" },
-                        React.createElement("label", { className: "rv-label" },
-                            "Nama ",
-                            React.createElement("span", { className: "rv-opt" }, "(opsional)")),
-                        React.createElement("input", { className: "rv-input", value: fnbName, onChange: (e) => setFnbName(e.target.value), placeholder: "Nama kamu" })),
+                    React.createElement("div", { className: "rv-row2" },
+                        React.createElement("div", { className: "rv-field" },
+                            React.createElement("label", { className: "rv-label" }, "Nomor WhatsApp"),
+                            React.createElement("input", { className: "rv-input", value: fnbPhone, onChange: (e) => setFnbPhone(e.target.value), placeholder: "0812xxxxxxx", inputMode: "tel" })),
+                        React.createElement("div", { className: "rv-field" },
+                            React.createElement("label", { className: "rv-label" },
+                                "Nama ",
+                                React.createElement("span", { className: "rv-opt" }, "(opsional)")),
+                            React.createElement("input", { className: "rv-input", value: fnbName, onChange: (e) => setFnbName(e.target.value), placeholder: "Nama kamu" }))),
                     foodTotal > 0 && (React.createElement("div", { className: "rv-bar" },
                         React.createElement("span", { className: "l" },
                             foodCount,
                             " item"),
                         React.createElement("span", { className: "v" }, rupiah(foodTotal)))),
+                    fnbError && React.createElement("div", { className: "rv-conflict", style: { marginTop: 14, marginBottom: 0 } }, fnbError),
                     React.createElement("div", { className: "rv-nav" },
-                        React.createElement("button", { className: "rv-btn primary", onClick: sendFoodOrder, disabled: foodCount === 0 || !fnbTable.trim() }, "Kirim Pesanan via WhatsApp")),
-                    React.createElement("p", { className: "rv-sub", style: { marginTop: 12, marginBottom: 0, fontSize: 11.5 } }, "Pesanan dikirim ke WhatsApp kafe. Pembayaran dilakukan di kasir."))))),
+                        React.createElement("button", { className: "rv-btn primary", onClick: submitFnbOrder, disabled: fnbSubmitting || foodCount === 0 || !fnbTable.trim() || !fnbPhone.trim() }, fnbSubmitting ? "Memproses…" : `Bayar ${rupiah(foodTotal)}`)))),
+                fnbBooking && (React.createElement("div", { className: "rv-center" },
+                    React.createElement("div", { className: "rv-check" },
+                        React.createElement("svg", { width: "26", height: "26", viewBox: "0 0 24 24", fill: "none", strokeWidth: "3", strokeLinecap: "round", strokeLinejoin: "round" },
+                            React.createElement("path", { d: "M20 6 9 17l-5-5" }))),
+                    React.createElement("h2", { className: "rv-h" }, "Pesanan dibuat"),
+                    React.createElement("p", { className: "rv-sub" },
+                        "Kode ",
+                        React.createElement("b", null, fnbBooking.code),
+                        " \u00B7 Meja ",
+                        fnbBooking.table_no,
+                        ". Transfer nominal ",
+                        React.createElement("b", null, "tepat"),
+                        " di bawah."),
+                    React.createElement("div", { className: "rv-va" },
+                        React.createElement("div", { className: "rv-va-label" },
+                            "Transfer ke ",
+                            fnbBooking.bankName || "BCA"),
+                        React.createElement("div", { className: "rv-va-num" }, fnbBooking.bankAccount || "(atur nomor rekening)"),
+                        React.createElement("div", { className: "rv-va-holder" },
+                            "a.n. ",
+                            fnbBooking.bankHolder || "(atur nama rekening)"),
+                        React.createElement("div", { className: "rv-va-amt" }, rupiah(fnbBooking.payable)),
+                        React.createElement("div", { className: "rv-va-note" },
+                            "Total ",
+                            rupiah(fnbBooking.total),
+                            " + kode unik ",
+                            fnbBooking.uniqueCode,
+                            " \u2014 transfer PAS."),
+                        React.createElement("button", { className: "rv-copy", onClick: fnbCopyAmount }, fnbCopied ? "Tersalin ✓" : "Salin nominal")),
+                    fnbBooking.expiresAt && (fnbRemaining <= 0
+                        ? React.createElement("div", { className: "rv-count warn" }, "Waktu habis \u2014 silakan pesan ulang.")
+                        : React.createElement("div", { className: `rv-count ${fnbRemaining < 120 ? "warn" : ""}` },
+                            "Selesaikan dalam ",
+                            mmss(fnbRemaining))),
+                    React.createElement("div", { className: "rv-note" },
+                        React.createElement("span", null, "\u2139\uFE0F"),
+                        React.createElement("span", null,
+                            "Transfer ",
+                            React.createElement("b", null, rupiah(fnbBooking.payable)),
+                            " (pas) lalu kirim bukti ke WhatsApp kami. Pesanan disiapkan setelah pembayaran dikonfirmasi.")),
+                    BUSINESS_WHATSAPP && (React.createElement("a", { className: "rv-btn primary", href: waLink(BUSINESS_WHATSAPP) || undefined, target: "_blank", rel: "noopener noreferrer", style: { display: "block", textAlign: "center", textDecoration: "none", marginTop: 14 } }, "Kirim bukti transfer ke WhatsApp")),
+                    React.createElement("div", { className: "rv-nav" },
+                        React.createElement("button", { className: "rv-btn ghost", onClick: fnbResetOrder, style: { flex: 1 } }, "Pesan lagi")))))),
             mode === "reserve" && (React.createElement("div", null,
                 step < 4 && (React.createElement("div", { className: "rv-steps" }, STEPS.map((label, i) => (React.createElement("div", { key: label, className: `rv-step ${i === step ? "active" : ""} ${i < step ? "done" : ""}` },
                     React.createElement("div", { className: "rv-step-bar" }),

@@ -17,7 +17,7 @@ import nodemailer from "nodemailer";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
-  getBookedHours, createReservation, markPaid, markCancelled, listReservations, getByCode,
+  getBookedHours, createReservation, createFnbOrder, markPaid, markCancelled, listReservations, getByCode,
 } from "./db.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -335,6 +335,24 @@ function buildInvoicePage(b) {
   </div></body></html>`;
 }
 
+function waFnbText(b) {
+  const items = (b.addons || []).map((a) => `- ${a.name} x${a.qty} = ${rupiah(a.qty * a.price)}`).join("\n");
+  return [
+    `*Pesanan F&B — ${BUSINESS_NAME}*`,
+    `Kode: ${b.code}`,
+    b.branch ? `Cabang: ${b.branch}` : "",
+    `Meja: ${b.table_no}`,
+    "",
+    items,
+    "",
+    `Transfer NOMINAL TEPAT:`,
+    `${BANK_NAME} ${BANK_ACCOUNT} a.n. ${BANK_HOLDER}`,
+    `Jumlah: ${rupiah(b.payable)} (kode unik ${b.uniqueCode})`,
+    "",
+    `Setelah transfer, balas chat ini dengan bukti transfer ya. Pesanan disiapkan setelah pembayaran dikonfirmasi. Terima kasih! 🀄`,
+  ].filter((x) => x !== "").join("\n");
+}
+
 function requireAdmin(req, res) {
   if (!ADMIN_KEY || (req.query.key !== ADMIN_KEY && req.get("x-admin-key") !== ADMIN_KEY)) {
     res.status(401).json({ ok: false, error: "unauthorized" });
@@ -379,6 +397,24 @@ app.post("/api/reservations", async (req, res) => {
 
   // Email dinonaktifkan — notifikasi lewat WhatsApp saja.
   safeWA(body.phone, waBookingText(full));
+});
+
+// Create an F&B order (VA payment, no calendar slot).
+app.post("/api/fnb-orders", (req, res) => {
+  const b = req.body || {};
+  if (!b.branchId || !b.table_no || !Array.isArray(b.addons) || !b.addons.length || !b.phone) {
+    return res.status(400).json({ ok: false, error: "data kurang" });
+  }
+  const code = "FB-" + Math.random().toString(36).slice(2, 8).toUpperCase();
+  const date = new Date().toISOString().slice(0, 10);
+  const result = createFnbOrder({ ...b, code, date });
+  const full = { ...b, code, date, payable: result.payable, uniqueCode: result.uniqueCode };
+  console.log(`[fnb] ${code} @ ${b.branch} · ${b.table_no} = ${rupiah(result.payable)}`);
+  res.json({
+    ok: true, code, total: b.total, payable: result.payable, uniqueCode: result.uniqueCode,
+    bankName: BANK_NAME, bankAccount: BANK_ACCOUNT, bankHolder: BANK_HOLDER, expiresAt: result.expiresAt,
+  });
+  safeWA(b.phone, waFnbText(full));
 });
 
 app.get("/api/reservations", (req, res) => {

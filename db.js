@@ -48,7 +48,7 @@ db.exec(`
 `);
 
 // Safe migrations for databases created by an older version.
-for (const col of ["unique_code INTEGER", "payable INTEGER", "paid_at INTEGER"]) {
+for (const col of ["unique_code INTEGER", "payable INTEGER", "paid_at INTEGER", "kind TEXT DEFAULT 'reservation'"]) {
   try { db.exec(`ALTER TABLE reservations ADD COLUMN ${col}`); } catch { /* already exists */ }
 }
 
@@ -133,7 +133,36 @@ export function createReservation(b) {
   return run.immediate();
 }
 
-// Owner marks a pending booking as paid. Returns the full booking, or null.
+// Create an F&B order (no slots, doesn't block the calendar). Same unique-amount VA.
+export function createFnbOrder(b) {
+  releaseExpired();
+  const now = Date.now();
+  const expiresAt = now + HOLD_MINUTES * 60 * 1000;
+  const base = Number(b.total) || 0;
+  const run = db.transaction(() => {
+    const used = new Set(
+      db.prepare(`SELECT payable FROM reservations WHERE status='pending' AND payable IS NOT NULL`)
+        .all().map((r) => r.payable)
+    );
+    let uniqueCode = null, payable = null;
+    for (let i = 0; i < 499; i++) {
+      const code = 1 + Math.floor(Math.random() * 499);
+      if (!used.has(base + code)) { uniqueCode = code; payable = base + code; break; }
+    }
+    if (payable === null) { uniqueCode = 1 + Math.floor(Math.random() * 499); payable = base + uniqueCode; }
+    insertReservation.run({
+      code: b.code, branch_id: b.branchId, branch_name: b.branch,
+      table_id: null, table_name: b.table_no, date: b.date,
+      name: b.name || null, phone: b.phone, email: null,
+      notes: b.notes || null, addons: JSON.stringify(b.addons || []), total: base,
+      unique_code: uniqueCode, payable, expires_at: expiresAt, created_at: now,
+    });
+    db.prepare(`UPDATE reservations SET kind='fnb' WHERE code=?`).run(b.code);
+    return { ok: true, expiresAt, uniqueCode, payable };
+  });
+  return run.immediate();
+}
+
 export function markPaid(code) {
   const info = db.prepare(
     `UPDATE reservations SET status='paid', expires_at=NULL, paid_at=? WHERE code=? AND status='pending'`
@@ -159,7 +188,7 @@ export function listReservations(limit = 200) {
   releaseExpired();
   return db.prepare(`
     SELECT r.code, r.branch_name, r.table_name, r.date, r.name, r.phone, r.email,
-           r.total, r.unique_code, r.payable, r.status, r.created_at, r.paid_at,
+           r.total, r.unique_code, r.payable, r.status, r.created_at, r.paid_at, r.kind,
            (SELECT group_concat(hour, ',') FROM slots s WHERE s.reservation_id = r.id) AS hours
     FROM reservations r
     ORDER BY r.id DESC
