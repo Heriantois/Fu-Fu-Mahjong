@@ -49,17 +49,12 @@ const BRANCHES = [
         ],
     },
 ];
-// Tanggal libur nasional (Weekend rate berlaku di Gading Serpong).
-// Isi sesuai kalender resmi. Format "YYYY-MM-DD".
+// Tanggal libur nasional (Weekend rate berlaku di Gading Serpong). Format "YYYY-MM-DD".
 const PUBLIC_HOLIDAYS = [
-    "2026-01-01", // Tahun Baru
-    "2026-08-17", // Hari Kemerdekaan
-    "2026-12-25", // Natal
-    // tambahkan: Idul Fitri, Nyepi, Waisak, dll sesuai penetapan pemerintah
+    "2026-01-01", "2026-08-17", "2026-12-25",
+    // tambahkan Idul Fitri, Nyepi, Waisak, dll sesuai penetapan pemerintah
 ];
-// Harga sewa meja per jam (Rupiah).
 function isHoliday(iso) { return PUBLIC_HOLIDAYS.indexOf(iso) !== -1; }
-// Gading Serpong: weekend = Jumat, Sabtu, Minggu + libur nasional.
 function isGSWeekend(iso) { const d = new Date(iso).getDay(); return d === 5 || d === 6 || d === 0 || isHoliday(iso); }
 function slotPriceFor(branch, table, iso) {
     if (branch.id === "bsd")
@@ -68,40 +63,37 @@ function slotPriceFor(branch, table, iso) {
         return isGSWeekend(iso) ? 60000 : 50000;
     return 50000;
 }
-// Gratis Es Teh 1 Pitcher: Gading Serpong, Weekday, jam 08:00–14:59.
 function freeIceTea(branch, iso, hour) {
     return branch.id === "gs" && !isGSWeekend(iso) && hour < 15;
 }
-// Menu tambahan (F&B). Ganti sesuai menu asli.
+// Menu F&B. Harga TANPA koma/titik (8000, bukan 8,000). "id" harus UNIK. "cat" = kategori.
 const ADDONS = [
-    { id: "Indomie", name: "Indomie Goreng", price: 8,000, max: 20 },
-    { id: "Indomie", name: "Indomie Goreng + Telur", price: 12,000, max: 20 },
-    { id: "Indomie", name: "Indomie Rebus", price: 8,000, max: 20 },
-    { id: "Indomie", name: "Indomie Rebus + Telur", price: 12,000, max: 20 },
-    { id: "Gorengan", name: "Singkong Goreng", price: 21,000, max: 20 },
-    { id: "Gorengan", name: "Bakso Goreng Fufu (Ayam Udang)", price: 26,000, max: 20 },
-    { id: "Gorengan", name: "Cakwe Goreng Ayam Udang", price: 24,000, max: 20 },
-    { id: "Gorengan", name: "Pisang Goreng Wijen", price: 21,000, max: 20 },
-    { id: "Gorengan", name: "Mini Wonton XXI wannabe", price: 22,000, max: 20 },
-    { id: "Gorengan", name: "Siomay Goreng Si Oma isi 4 pcs", price: 30,000, max: 20 },
-    { id: "Gorengan", name: "Pangsit Goreng Ayam Udang isi 3 pcs + mayonise", price: 20,000, max: 20 },
-    { id: "Kue", name: "Pia Favourite Oma Kacang Hijau isi 3 pcs", price: 20,000, max: 20 },
-    { id: "kopi", name: "Kopi", price: 25000, max: 10 },
-    { id: "snack", name: "Snack Platter", price: 75000, max: 6 },
-    { id: "air", name: "Air Mineral", price: 10000, max: 10 },
+    { id: "mie1", cat: "Indomie", name: "Indomie Goreng", price: 8000, max: 20 },
+    { id: "mie2", cat: "Indomie", name: "Indomie Goreng + Telur", price: 12000, max: 20 },
+    { id: "mie3", cat: "Indomie", name: "Indomie Rebus", price: 8000, max: 20 },
+    { id: "mie4", cat: "Indomie", name: "Indomie Rebus + Telur", price: 12000, max: 20 },
+    { id: "gor1", cat: "Gorengan & Camilan", name: "Singkong Goreng", price: 21000, max: 20 },
+    { id: "gor2", cat: "Gorengan & Camilan", name: "Bakso Goreng Fufu (Ayam Udang)", price: 26000, max: 20 },
+    { id: "gor3", cat: "Gorengan & Camilan", name: "Cakwe Goreng Ayam Udang", price: 24000, max: 20 },
+    { id: "gor4", cat: "Gorengan & Camilan", name: "Pisang Goreng Wijen", price: 21000, max: 20 },
+    { id: "gor5", cat: "Gorengan & Camilan", name: "Mini Wonton XXI wannabe", price: 22000, max: 20 },
+    { id: "gor6", cat: "Gorengan & Camilan", name: "Siomay Goreng Si Oma (4 pcs)", price: 30000, max: 20 },
+    { id: "gor7", cat: "Gorengan & Camilan", name: "Pangsit Goreng Ayam Udang (3 pcs) + mayo", price: 20000, max: 20 },
+    { id: "kue1", cat: "Kue", name: "Pia Oma Kacang Hijau (3 pcs)", price: 20000, max: 20 },
+    { id: "drink1", cat: "Minuman", name: "Kopi", price: 25000, max: 20 },
+    { id: "drink2", cat: "Minuman", name: "Air Mineral", price: 10000, max: 20 },
+    { id: "misc1", cat: "Lainnya", name: "Snack Platter", price: 75000, max: 10 },
 ];
-// Menu unggulan untuk carousel di tab "Data Diri".
-// Ganti "img" dengan URL foto, ATAU taruh file di folder "img" di repo lalu tulis
-// "/img/namafile.jpg". Kosong ("") = tampil placeholder "Foto menyusul".
+// Menu unggulan untuk carousel. img: URL foto atau "/img/namafile.jpg". "" = placeholder.
 const FEATURED = [
-    { name: "Teh Poci Spesial", price: 35000, img: "" },
-    { name: "Kopi Susu Fu Fu", price: 25000, img: "" },
-    { name: "Snack Platter", price: 75000, img: "" },
-    { name: "Dimsum Ayam", price: 40000, img: "" },
+    { name: "Siomay Goreng Si Oma", price: 30000, img: "" },
+    { name: "Bakso Goreng Fufu", price: 26000, img: "" },
+    { name: "Pisang Goreng Wijen", price: 21000, img: "" },
+    { name: "Pia Oma Kacang Hijau", price: 20000, img: "" },
 ];
-// GANTI dengan nomor WhatsApp bisnis (untuk kirim bukti transfer).
+// GANTI dengan nomor WhatsApp kafe (WAJIB untuk pesan F&B & kirim bukti transfer).
 const BUSINESS_WHATSAPP = "08XX-XXXX-XXXX";
-const API_BASE = ""; // website & server jadi satu (same origin)
+const API_BASE = "";
 const STEPS = ["Cabang", "Jadwal", "Detail", "Konfirmasi"];
 /* ===================================================================== */
 const rupiah = (n) => "Rp" + n.toLocaleString("id-ID");
@@ -120,6 +112,15 @@ function mmss(sec) {
     const m = Math.floor(sec / 60), s = sec % 60;
     return `${m}:${String(s).padStart(2, "0")}`;
 }
+// group ADDONS by category, preserving order
+function groupedAddons() {
+    const cats = [], map = {};
+    ADDONS.forEach((a) => { const c = a.cat || "Menu"; if (!map[c]) {
+        map[c] = [];
+        cats.push(c);
+    } map[c].push(a); });
+    return cats.map((c) => ({ cat: c, items: map[c] }));
+}
 const styles = `
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 .rv-root{--ink:#1c1a16;--paper:#faf6ec;--card:#fffdf7;--brand:#146c54;--brand-dark:#0f5642;--accent:#c2963a;--red:#b23a34;--line:#e8e0cf;--muted:#6b6459;--danger:#b23a34;
@@ -128,7 +129,10 @@ const styles = `
 .rv-head{margin-bottom:22px;text-align:center;}
 .rv-logo{height:104px;width:auto;display:block;margin:0 auto 2px;}
 .rv-tag{color:var(--muted);font-size:13.5px;margin-top:2px;}
-.rv-steps{display:flex;gap:6px;margin:20px 0 22px;}
+.rv-modetabs{display:flex;gap:6px;margin-bottom:18px;background:#efe7d3;border-radius:11px;padding:4px;}
+.rv-modetabs button{flex:1;font:inherit;font-size:13.5px;font-weight:700;padding:10px;border:none;border-radius:8px;background:transparent;color:var(--muted);cursor:pointer;}
+.rv-modetabs button.on{background:var(--brand);color:#fff;}
+.rv-steps{display:flex;gap:6px;margin:0 0 22px;}
 .rv-step{flex:1;}
 .rv-step-bar{height:4px;border-radius:99px;background:var(--line);transition:background .25s;}
 .rv-step.done .rv-step-bar,.rv-step.active .rv-step-bar{background:var(--brand);}
@@ -187,6 +191,8 @@ const styles = `
 .rv-qty{min-width:16px;text-align:center;font-weight:700;font-size:15px;}
 .rv-row2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
 .rv-divider{height:1px;background:var(--line);margin:20px 0;}
+.rv-cat{font-size:11.5px;font-weight:800;color:var(--brand);text-transform:uppercase;letter-spacing:.05em;margin:18px 0 8px;}
+.rv-cat.first{margin-top:4px;}
 .rv-tabs{display:flex;gap:6px;margin-bottom:16px;background:#f3efe3;border-radius:11px;padding:4px;}
 .rv-tab{flex:1;font:inherit;font-size:13.5px;font-weight:700;padding:9px;border:none;border-radius:8px;background:transparent;color:var(--muted);cursor:pointer;}
 .rv-tab.on{background:#fff;color:var(--brand);box-shadow:0 1px 3px rgba(0,0,0,.06);}
@@ -226,10 +232,26 @@ const styles = `
 .rv-copy{margin-top:12px;font:inherit;font-size:12.5px;font-weight:600;background:rgba(255,255,255,.12);color:#fff;border:none;padding:7px 14px;border-radius:8px;cursor:pointer;}
 .rv-copy:hover{background:rgba(255,255,255,.2);}
 .rv-note{display:flex;gap:10px;background:#f8f0dc;border:1px solid #ecd9a8;border-radius:11px;padding:13px 15px;font-size:12.5px;color:#6f5a22;line-height:1.55;margin-top:16px;text-align:left;}
+.qr-wrap{max-width:820px;margin:0 auto;}
+.qr-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:16px;}
+.qr-card{border:1px solid var(--line);border-radius:12px;padding:16px;text-align:center;background:#fff;}
+.qr-card img{width:100%;max-width:190px;height:auto;}
+.qr-t{font-weight:800;font-size:16px;margin-top:8px;}
+.qr-b{font-size:12px;color:var(--muted);}
+.qr-s{font-size:11px;color:var(--brand);font-weight:700;margin-top:4px;}
+.qr-hh{font-size:16px;font-weight:800;margin:22px 0 12px;}
 @media(max-width:440px){.rv-grid{grid-template-columns:repeat(3,1fr);}}
+@media print{.rv-root{padding:0;background:#fff;} .qr-pbtn{display:none;} .qr-card{break-inside:avoid;}}
 @media(prefers-reduced-motion:reduce){.rv-root *{transition:none!important;}}
 `;
 function App() {
+    const params = new URLSearchParams(typeof location !== "undefined" ? location.search : "");
+    const qrMode = params.get("mode") === "qr";
+    const qBranchRaw = params.get("branch");
+    const validQBranch = qBranchRaw && BRANCHES.some((b) => b.id === qBranchRaw) ? qBranchRaw : null;
+    const qTable = params.get("table") || "";
+    const [mode, setMode] = useState(params.get("mode") === "fnb" ? "fnb" : "reserve");
+    // reservation state
     const [step, setStep] = useState(0);
     const [branchId, setBranchId] = useState(null);
     const [tableId, setTableId] = useState(null);
@@ -248,6 +270,11 @@ function App() {
     const [submitting, setSubmitting] = useState(false);
     const [submitError, setSubmitError] = useState("");
     const [remaining, setRemaining] = useState(0);
+    // F&B order state
+    const [fnbBranchId, setFnbBranchId] = useState(validQBranch);
+    const [fnbTable, setFnbTable] = useState(qTable);
+    const [fnbName, setFnbName] = useState("");
+    const [food, setFood] = useState({});
     const branch = BRANCHES.find((b) => b.id === branchId) || null;
     const table = branch ? branch.tables.find((t) => t.id === tableId) || null : null;
     const isToday = date === todayISO();
@@ -266,6 +293,9 @@ function App() {
     const addonTotal = ADDONS.reduce((s, a) => s + (addons[a.id] || 0) * a.price, 0);
     const addonCount = ADDONS.reduce((s, a) => s + (addons[a.id] || 0), 0);
     const total = slotTotal + addonTotal;
+    const foodTotal = ADDONS.reduce((s, a) => s + (food[a.id] || 0) * a.price, 0);
+    const foodCount = ADDONS.reduce((s, a) => s + (food[a.id] || 0), 0);
+    const fnbBranch = BRANCHES.find((b) => b.id === fnbBranchId) || null;
     useEffect(() => {
         if (!branch || !table || !date) {
             setBookedHours([]);
@@ -288,7 +318,6 @@ function App() {
             setLoadingSlots(false); });
         return () => { cancelled = true; };
     }, [tableId, date, refreshKey]);
-    // countdown on payment screen
     useEffect(() => {
         if (step !== 4 || !booking || !booking.expiresAt)
             return;
@@ -318,9 +347,8 @@ function App() {
         setConflict([]);
         setSlots((s) => (s.indexOf(h) !== -1 ? s.filter((x) => x !== h) : s.concat(h).sort((a, b) => a - b)));
     }
-    function bumpAddon(id, d, max) {
-        setAddons((a) => ({ ...a, [id]: Math.min(max, Math.max(0, (a[id] || 0) + d)) }));
-    }
+    function bumpAddon(id, d, max) { setAddons((a) => ({ ...a, [id]: Math.min(max, Math.max(0, (a[id] || 0) + d)) })); }
+    function bumpFood(id, d, max) { setFood((a) => ({ ...a, [id]: Math.min(max, Math.max(0, (a[id] || 0) + d)) })); }
     const isBooked = (h) => bookedHours.indexOf(h) !== -1;
     const anyFreeTea = branch && date && slots.some((h) => freeIceTea(branch, date, h));
     const canNext = (step === 0 && branch) ||
@@ -392,224 +420,308 @@ function App() {
         setSubmitError("");
         setTab("info");
     }
+    function sendFoodOrder() {
+        const link = waLink(BUSINESS_WHATSAPP);
+        if (!link) {
+            alert("Nomor WhatsApp kafe belum diatur (BUSINESS_WHATSAPP).");
+            return;
+        }
+        const items = ADDONS.filter((a) => food[a.id]);
+        const lines = items.map((a) => `- ${a.name} x${food[a.id]} = ${rupiah(food[a.id] * a.price)}`);
+        const msg = [
+            `*Pesanan F&B — ${BUSINESS.name}*`,
+            fnbBranch ? `Cabang: ${fnbBranch.name}` : "",
+            `Meja: ${fnbTable}`,
+            fnbName ? `Nama: ${fnbName}` : "",
+            "",
+            ...lines,
+            "",
+            `Total: ${rupiah(foodTotal)}`,
+            "(bayar di kasir)",
+        ].filter((x) => x !== "").join("\n");
+        window.open(`${link}?text=${encodeURIComponent(msg)}`, "_blank");
+    }
     const expired = step === 4 && booking && booking.expiresAt && remaining <= 0;
+    // ---- QR SHEET (printable) ----
+    if (qrMode) {
+        const origin = typeof location !== "undefined" ? location.origin : "";
+        return (React.createElement("div", { className: "rv-root" },
+            React.createElement("style", null, styles),
+            React.createElement("div", { className: "qr-wrap" },
+                React.createElement("header", { className: "rv-head" },
+                    React.createElement("img", { className: "rv-logo", src: LOGO, alt: BUSINESS.name }),
+                    React.createElement("div", { className: "rv-tag" }, "QR Pesan F&B \u2014 tempel di tiap meja")),
+                React.createElement("div", { style: { textAlign: "center", marginBottom: 18 } },
+                    React.createElement("button", { className: "rv-btn primary qr-pbtn", onClick: () => window.print(), style: { display: "inline-block", flex: "none" } }, "\uD83D\uDDA8\uFE0F Cetak semua QR")),
+                BRANCHES.map((b) => (React.createElement("div", { key: b.id },
+                    React.createElement("div", { className: "qr-hh" }, b.name),
+                    React.createElement("div", { className: "qr-grid" }, b.tables.map((t) => {
+                        const url = `${origin}/?mode=fnb&branch=${b.id}&table=${encodeURIComponent(t.name)}`;
+                        const qr = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(url)}`;
+                        return (React.createElement("div", { className: "qr-card", key: t.id },
+                            React.createElement("img", { src: qr, alt: t.name }),
+                            React.createElement("div", { className: "qr-t" }, t.name),
+                            React.createElement("div", { className: "qr-b" }, t.type),
+                            React.createElement("div", { className: "qr-s" }, "Scan untuk pesan F&B")));
+                    }))))))));
+    }
     return (React.createElement("div", { className: "rv-root" },
         React.createElement("style", null, styles),
         React.createElement("div", { className: "rv-shell" },
             React.createElement("header", { className: "rv-head" },
                 React.createElement("img", { className: "rv-logo", src: LOGO, alt: BUSINESS.name }),
                 React.createElement("div", { className: "rv-tag" }, BUSINESS.tagline)),
-            step < 4 && (React.createElement("div", { className: "rv-steps" }, STEPS.map((label, i) => (React.createElement("div", { key: label, className: `rv-step ${i === step ? "active" : ""} ${i < step ? "done" : ""}` },
-                React.createElement("div", { className: "rv-step-bar" }),
-                React.createElement("div", { className: "rv-step-label" }, label)))))),
-            step === 0 && (React.createElement("div", { className: "rv-card" },
-                React.createElement("h2", { className: "rv-h" }, "Pilih cabang"),
-                React.createElement("p", { className: "rv-sub" }, "Reservasi diproses di cabang yang kamu pilih."),
-                BRANCHES.map((b) => (React.createElement("button", { key: b.id, className: `rv-branch ${branchId === b.id ? "sel" : ""}`, onClick: () => pickBranch(b.id) },
-                    React.createElement("span", { className: "rv-radio" },
-                        React.createElement("i", null)),
-                    React.createElement("span", null,
-                        React.createElement("div", { className: "rv-branch-name" }, b.name),
-                        React.createElement("div", { className: "rv-branch-meta" },
-                            b.address,
-                            React.createElement("br", null),
-                            b.tables.length,
-                            " meja \u00B7 buka ",
-                            hhmm(b.open),
-                            "\u2013",
-                            hhmm(b.close)))))))),
-            step === 1 && (React.createElement("div", { className: "rv-card" },
-                React.createElement("h2", { className: "rv-h" }, "Pilih meja & jam"),
-                React.createElement("p", { className: "rv-sub" }, branch.name),
-                React.createElement("div", { className: "rv-field" },
-                    React.createElement("label", { className: "rv-label" }, "Meja"),
-                    React.createElement("div", { className: "rv-pills" }, branch.tables.map((t) => (React.createElement("button", { key: t.id, className: `rv-pill ${tableId === t.id ? "sel" : ""}`, onClick: () => pickTable(t.id) },
-                        t.name,
-                        React.createElement("small", null, t.type)))))),
-                React.createElement("div", { className: "rv-field" },
-                    React.createElement("label", { className: "rv-label" }, "Tanggal main"),
-                    React.createElement("input", { className: "rv-input", type: "date", min: todayISO(), value: date, onChange: (e) => pickDate(e.target.value) })),
-                table && date && (React.createElement("div", { className: "rv-field" },
-                    conflict.length > 0 && (React.createElement("div", { className: "rv-conflict" },
-                        "Yah, jam ",
-                        conflict.map(hhmm).join(", "),
-                        " baru saja dipesan orang lain. Silakan pilih jam lain ya.")),
-                    React.createElement("label", { className: "rv-label" },
-                        "Jam (",
-                        rupiah(unitPrice),
-                        "/jam) \u2014 bisa pilih lebih dari satu"),
-                    loadingSlots && React.createElement("div", { className: "rv-loading" }, "Memuat ketersediaan\u2026"),
-                    React.createElement("div", { className: "rv-grid" }, hours.map((h) => {
-                        const bk = isBooked(h) || pastHour(h);
-                        const sel = slots.indexOf(h) !== -1;
-                        const tea = freeIceTea(branch, date, h);
-                        return (React.createElement("button", { key: h, disabled: bk, onClick: () => toggleSlot(h), className: `rv-slot ${sel ? "sel" : ""} ${bk ? "bk" : ""}` },
-                            React.createElement("div", { className: "t" }, hhmm(h)),
-                            React.createElement("div", { className: "p" }, isBooked(h) ? "Penuh" : pastHour(h) ? "Lewat" : shortRp(slotPriceFor(branch, table, date))),
-                            tea && !bk && React.createElement("div", { className: "rv-free" }, "\uD83E\uDDCA es teh")));
-                    })),
-                    React.createElement("div", { className: "rv-legend" },
-                        React.createElement("span", null,
-                            React.createElement("i", { className: "rv-swatch", style: { background: "#fff", border: "1px solid #e8e0cf" } }),
-                            "Tersedia"),
-                        React.createElement("span", null,
-                            React.createElement("i", { className: "rv-swatch", style: { background: "#146c54" } }),
-                            "Dipilih"),
-                        React.createElement("span", null,
-                            React.createElement("i", { className: "rv-swatch", style: { background: "#f3efe3" } }),
-                            "Penuh/lewat")),
-                    slots.length > 0 && (React.createElement("div", { className: "rv-bar" },
-                        React.createElement("span", { className: "l" },
-                            slots.length,
-                            " jam \u00B7 ",
-                            table.name),
-                        React.createElement("span", { className: "v" }, rupiah(slotTotal)))))))),
-            step === 2 && (React.createElement("div", { className: "rv-card" },
-                React.createElement("h2", { className: "rv-h" }, "Pesanan & data diri"),
-                React.createElement("p", { className: "rv-sub" }, "1 meja untuk maks. 4 pemain."),
-                React.createElement("div", { className: "rv-tabs" },
-                    React.createElement("button", { className: `rv-tab ${tab === "info" ? "on" : ""}`, onClick: () => setTab("info") }, "Data Diri"),
-                    React.createElement("button", { className: `rv-tab ${tab === "menu" ? "on" : ""}`, onClick: () => setTab("menu") },
-                        "Menu F&B",
-                        addonCount ? ` (${addonCount})` : "")),
-                tab === "info" && (React.createElement("div", null,
-                    React.createElement("div", { className: "rv-carousel" }, FEATURED.map((f, i) => (React.createElement("div", { className: "rv-cslide", key: i },
-                        React.createElement("div", { className: "rv-cimg", style: f.img ? { backgroundImage: `url(${f.img})` } : {} }, !f.img && React.createElement("span", null, "Foto menyusul")),
-                        React.createElement("div", { className: "rv-cbody" },
-                            React.createElement("div", { className: "rv-cname" }, f.name),
-                            React.createElement("div", { className: "rv-cprice" }, rupiah(f.price))))))),
+            React.createElement("div", { className: "rv-modetabs" },
+                React.createElement("button", { className: mode === "reserve" ? "on" : "", onClick: () => setMode("reserve") }, "Reservasi Meja"),
+                React.createElement("button", { className: mode === "fnb" ? "on" : "", onClick: () => setMode("fnb") }, "Pesan F&B")),
+            mode === "fnb" && (React.createElement("div", { className: "rv-card" },
+                React.createElement("h2", { className: "rv-h" }, "Pesan Makanan & Minuman"),
+                React.createElement("p", { className: "rv-sub" }, "Sudah di tempat? Pilih menu, isi nomor meja, lalu kirim ke WhatsApp kami. Bayar di kasir."),
+                !validQBranch && (React.createElement("div", { className: "rv-field" },
+                    React.createElement("label", { className: "rv-label" }, "Cabang"),
+                    React.createElement("div", { className: "rv-pills" }, BRANCHES.map((b) => (React.createElement("button", { key: b.id, className: `rv-pill ${fnbBranchId === b.id ? "sel" : ""}`, onClick: () => setFnbBranchId(b.id) }, b.name)))))),
+                validQBranch && fnbBranch && (React.createElement("p", { className: "rv-sub", style: { marginTop: -6 } },
+                    "Cabang: ",
+                    React.createElement("b", null, fnbBranch.name))),
+                fnbBranch && (React.createElement("div", null,
+                    groupedAddons().map((g, gi) => (React.createElement("div", { key: g.cat },
+                        React.createElement("div", { className: `rv-cat ${gi === 0 ? "first" : ""}` }, g.cat),
+                        g.items.map((a) => (React.createElement("div", { key: a.id, className: "rv-addon" },
+                            React.createElement("div", null,
+                                React.createElement("div", { className: "rv-addon-name" }, a.name),
+                                React.createElement("div", { className: "rv-addon-price" }, rupiah(a.price))),
+                            React.createElement("div", { className: "rv-stepper" },
+                                React.createElement("button", { className: "rv-sbtn", onClick: () => bumpFood(a.id, -1, a.max), disabled: !food[a.id] }, "\u2212"),
+                                React.createElement("span", { className: "rv-qty" }, food[a.id] || 0),
+                                React.createElement("button", { className: "rv-sbtn", onClick: () => bumpFood(a.id, 1, a.max), disabled: (food[a.id] || 0) >= a.max }, "+")))))))),
+                    React.createElement("div", { className: "rv-divider" }),
                     React.createElement("div", { className: "rv-field" },
-                        React.createElement("label", { className: "rv-label" }, "Nama lengkap"),
-                        React.createElement("input", { className: `rv-input ${touched && errors.name ? "err" : ""}`, value: form.name, onChange: set("name"), placeholder: "Nama kamu" }),
-                        touched && errors.name && React.createElement("div", { className: "rv-errmsg" }, errors.name)),
-                    React.createElement("div", { className: "rv-row2" },
-                        React.createElement("div", { className: "rv-field" },
-                            React.createElement("label", { className: "rv-label" }, "Nomor WhatsApp"),
-                            React.createElement("input", { className: `rv-input ${touched && errors.phone ? "err" : ""}`, value: form.phone, onChange: set("phone"), placeholder: "0812xxxxxxx", inputMode: "tel" }),
-                            touched && errors.phone && React.createElement("div", { className: "rv-errmsg" }, errors.phone)),
-                        React.createElement("div", { className: "rv-field" },
-                            React.createElement("label", { className: "rv-label" },
-                                "Email ",
-                                React.createElement("span", { className: "rv-opt" }, "(opsional)")),
-                            React.createElement("input", { className: `rv-input ${touched && errors.email ? "err" : ""}`, value: form.email, onChange: set("email"), placeholder: "email@contoh.com", inputMode: "email" }),
-                            touched && errors.email && React.createElement("div", { className: "rv-errmsg" }, errors.email))),
+                        React.createElement("label", { className: "rv-label" }, "Nomor meja"),
+                        React.createElement("input", { className: "rv-input", value: fnbTable, onChange: (e) => setFnbTable(e.target.value), placeholder: "mis. Table 3 / VIP 1" })),
                     React.createElement("div", { className: "rv-field" },
                         React.createElement("label", { className: "rv-label" },
-                            "Catatan ",
+                            "Nama ",
                             React.createElement("span", { className: "rv-opt" }, "(opsional)")),
-                        React.createElement("input", { className: "rv-input", value: form.notes, onChange: set("notes"), placeholder: "Permintaan khusus\u2026" })))),
-                tab === "menu" && (React.createElement("div", null,
-                    React.createElement("label", { className: "rv-label" },
-                        "Menu tambahan ",
-                        React.createElement("span", { className: "rv-opt" }, "(opsional)")),
-                    ADDONS.map((a) => (React.createElement("div", { key: a.id, className: "rv-addon" },
-                        React.createElement("div", null,
-                            React.createElement("div", { className: "rv-addon-name" }, a.name),
-                            React.createElement("div", { className: "rv-addon-price" }, rupiah(a.price))),
-                        React.createElement("div", { className: "rv-stepper" },
-                            React.createElement("button", { className: "rv-sbtn", onClick: () => bumpAddon(a.id, -1, a.max), disabled: !addons[a.id] }, "\u2212"),
-                            React.createElement("span", { className: "rv-qty" }, addons[a.id] || 0),
-                            React.createElement("button", { className: "rv-sbtn", onClick: () => bumpAddon(a.id, 1, a.max), disabled: (addons[a.id] || 0) >= a.max }, "+"))))),
-                    addonTotal > 0 && (React.createElement("div", { className: "rv-bar" },
-                        React.createElement("span", { className: "l" }, "Subtotal menu"),
-                        React.createElement("span", { className: "v" }, rupiah(addonTotal)))))))),
-            step === 3 && (React.createElement("div", { className: "rv-card" },
-                React.createElement("h2", { className: "rv-h" }, "Cek reservasi kamu"),
-                React.createElement("p", { className: "rv-sub" }, "Pastikan semua benar sebelum lanjut ke pembayaran."),
-                React.createElement("div", { className: "rv-summary" },
-                    React.createElement("div", { className: "rv-srow" },
-                        React.createElement("span", { className: "rv-slabel" }, "Cabang"),
-                        React.createElement("span", { className: "rv-sval" }, branch.name)),
-                    React.createElement("div", { className: "rv-srow" },
-                        React.createElement("span", { className: "rv-slabel" }, "Meja"),
-                        React.createElement("span", { className: "rv-sval" },
-                            table.name,
-                            " \u00B7 ",
-                            table.type)),
-                    React.createElement("div", { className: "rv-srow" },
-                        React.createElement("span", { className: "rv-slabel" }, "Tanggal"),
-                        React.createElement("span", { className: "rv-sval" }, new Date(date).toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" }))),
-                    React.createElement("div", { className: "rv-srow" },
-                        React.createElement("span", { className: "rv-slabel" },
+                        React.createElement("input", { className: "rv-input", value: fnbName, onChange: (e) => setFnbName(e.target.value), placeholder: "Nama kamu" })),
+                    foodTotal > 0 && (React.createElement("div", { className: "rv-bar" },
+                        React.createElement("span", { className: "l" },
+                            foodCount,
+                            " item"),
+                        React.createElement("span", { className: "v" }, rupiah(foodTotal)))),
+                    React.createElement("div", { className: "rv-nav" },
+                        React.createElement("button", { className: "rv-btn primary", onClick: sendFoodOrder, disabled: foodCount === 0 || !fnbTable.trim() }, "Kirim Pesanan via WhatsApp")),
+                    React.createElement("p", { className: "rv-sub", style: { marginTop: 12, marginBottom: 0, fontSize: 11.5 } }, "Pesanan dikirim ke WhatsApp kafe. Pembayaran dilakukan di kasir."))))),
+            mode === "reserve" && (React.createElement("div", null,
+                step < 4 && (React.createElement("div", { className: "rv-steps" }, STEPS.map((label, i) => (React.createElement("div", { key: label, className: `rv-step ${i === step ? "active" : ""} ${i < step ? "done" : ""}` },
+                    React.createElement("div", { className: "rv-step-bar" }),
+                    React.createElement("div", { className: "rv-step-label" }, label)))))),
+                step === 0 && (React.createElement("div", { className: "rv-card" },
+                    React.createElement("h2", { className: "rv-h" }, "Pilih cabang"),
+                    React.createElement("p", { className: "rv-sub" }, "Reservasi diproses di cabang yang kamu pilih."),
+                    BRANCHES.map((b) => (React.createElement("button", { key: b.id, className: `rv-branch ${branchId === b.id ? "sel" : ""}`, onClick: () => pickBranch(b.id) },
+                        React.createElement("span", { className: "rv-radio" },
+                            React.createElement("i", null)),
+                        React.createElement("span", null,
+                            React.createElement("div", { className: "rv-branch-name" }, b.name),
+                            React.createElement("div", { className: "rv-branch-meta" },
+                                b.address,
+                                React.createElement("br", null),
+                                b.tables.length,
+                                " meja \u00B7 buka ",
+                                hhmm(b.open),
+                                "\u2013",
+                                hhmm(b.close)))))))),
+                step === 1 && (React.createElement("div", { className: "rv-card" },
+                    React.createElement("h2", { className: "rv-h" }, "Pilih meja & jam"),
+                    React.createElement("p", { className: "rv-sub" }, branch.name),
+                    React.createElement("div", { className: "rv-field" },
+                        React.createElement("label", { className: "rv-label" }, "Meja"),
+                        React.createElement("div", { className: "rv-pills" }, branch.tables.map((t) => (React.createElement("button", { key: t.id, className: `rv-pill ${tableId === t.id ? "sel" : ""}`, onClick: () => pickTable(t.id) },
+                            t.name,
+                            React.createElement("small", null, t.type)))))),
+                    React.createElement("div", { className: "rv-field" },
+                        React.createElement("label", { className: "rv-label" }, "Tanggal main"),
+                        React.createElement("input", { className: "rv-input", type: "date", min: todayISO(), value: date, onChange: (e) => pickDate(e.target.value) })),
+                    table && date && (React.createElement("div", { className: "rv-field" },
+                        conflict.length > 0 && (React.createElement("div", { className: "rv-conflict" },
+                            "Yah, jam ",
+                            conflict.map(hhmm).join(", "),
+                            " baru saja dipesan orang lain. Silakan pilih jam lain ya.")),
+                        React.createElement("label", { className: "rv-label" },
                             "Jam (",
-                            slots.length,
-                            " jam)"),
-                        React.createElement("span", { className: "rv-sval" }, slots.map(hhmm).join(", "))),
-                    React.createElement("div", { className: "rv-srow" },
-                        React.createElement("span", { className: "rv-slabel" }, "Sewa meja"),
-                        React.createElement("span", { className: "rv-sval" }, rupiah(slotTotal))),
-                    ADDONS.filter((a) => addons[a.id]).map((a) => (React.createElement("div", { className: "rv-srow", key: a.id },
-                        React.createElement("span", { className: "rv-slabel" },
-                            a.name,
-                            " \u00D7",
-                            addons[a.id]),
-                        React.createElement("span", { className: "rv-sval" }, rupiah(addons[a.id] * a.price))))),
-                    React.createElement("div", { className: "rv-srow" },
-                        React.createElement("span", { className: "rv-slabel" }, "Nama"),
-                        React.createElement("span", { className: "rv-sval" }, form.name)),
-                    React.createElement("div", { className: "rv-srow" },
-                        React.createElement("span", { className: "rv-slabel" }, "WhatsApp"),
-                        React.createElement("span", { className: "rv-sval" }, form.phone)),
-                    form.email && React.createElement("div", { className: "rv-srow" },
-                        React.createElement("span", { className: "rv-slabel" }, "Email"),
-                        React.createElement("span", { className: "rv-sval" }, form.email)),
-                    form.notes && React.createElement("div", { className: "rv-srow" },
-                        React.createElement("span", { className: "rv-slabel" }, "Catatan"),
-                        React.createElement("span", { className: "rv-sval" }, form.notes)),
-                    React.createElement("div", { className: "rv-srow rv-total" },
-                        React.createElement("span", { className: "rv-slabel", style: { color: "#1c1a16", fontWeight: 700 } }, "Total bayar"),
-                        React.createElement("span", { className: "rv-sval" }, rupiah(total)))),
-                anyFreeTea && React.createElement("p", { className: "rv-sub", style: { marginTop: 12, marginBottom: 0 } }, "\uD83E\uDDCA Termasuk gratis es teh untuk jam 08:00\u201315:00 (weekday)."),
-                submitError && React.createElement("div", { className: "rv-conflict", style: { marginTop: 14, marginBottom: 0 } }, submitError))),
-            step === 4 && booking && (React.createElement("div", { className: "rv-card rv-center" },
-                React.createElement("div", { className: "rv-check" },
-                    React.createElement("svg", { width: "26", height: "26", viewBox: "0 0 24 24", fill: "none", strokeWidth: "3", strokeLinecap: "round", strokeLinejoin: "round" },
-                        React.createElement("path", { d: "M20 6 9 17l-5-5" }))),
-                React.createElement("h2", { className: "rv-h" }, "Reservasi dibuat"),
-                React.createElement("p", { className: "rv-sub" },
-                    "Kode ",
-                    React.createElement("b", null, booking.code),
-                    ". Transfer dengan nominal ",
-                    React.createElement("b", null, "tepat"),
-                    " di bawah untuk mengunci meja."),
-                React.createElement("div", { className: "rv-va" },
-                    React.createElement("div", { className: "rv-va-label" },
-                        "Transfer ke ",
-                        booking.bankName || "BCA"),
-                    React.createElement("div", { className: "rv-va-num" }, booking.bankAccount || "(atur nomor rekening)"),
-                    React.createElement("div", { className: "rv-va-holder" },
-                        "a.n. ",
-                        booking.bankHolder || "(atur nama rekening)"),
-                    React.createElement("div", { className: "rv-va-amt" }, rupiah(booking.payable)),
-                    React.createElement("div", { className: "rv-va-note" },
-                        "Total ",
-                        rupiah(booking.total),
-                        " + kode unik ",
-                        booking.uniqueCode,
-                        " \u2014 transfer PAS sampai 3 digit terakhir."),
-                    React.createElement("button", { className: "rv-copy", onClick: copyAmount }, copied ? "Tersalin ✓" : "Salin nominal")),
-                expired
-                    ? React.createElement("div", { className: "rv-count warn" }, "Waktu habis \u2014 meja sudah dilepas. Silakan pesan ulang.")
-                    : React.createElement("div", { className: `rv-count ${remaining < 120 ? "warn" : ""}` },
-                        "Selesaikan dalam ",
-                        mmss(remaining)),
-                React.createElement("div", { className: "rv-note" },
-                    React.createElement("span", null, "\u2139\uFE0F"),
-                    React.createElement("span", null,
-                        "Buka BCA Mobile / m-BCA \u2192 ",
-                        React.createElement("b", null, "Transfer"),
-                        " \u2192 masukkan nomor rekening di atas \u2192 isi nominal ",
-                        React.createElement("b", null, rupiah(booking.payable)),
-                        " (pas). Lalu kirim bukti transfer ke WhatsApp kami. Meja ditahan 15 menit.")),
-                BUSINESS_WHATSAPP && (React.createElement("a", { className: "rv-btn primary", href: waLink(BUSINESS_WHATSAPP) || undefined, target: "_blank", rel: "noopener noreferrer", style: { display: "block", textAlign: "center", textDecoration: "none", marginTop: 14 } }, "Kirim bukti transfer ke WhatsApp")),
-                React.createElement("div", { className: "rv-nav" },
-                    React.createElement("button", { className: "rv-btn ghost", onClick: reset, style: { flex: 1 } }, "Buat reservasi baru")))),
-            step < 4 && (React.createElement("div", { className: "rv-nav" },
-                step > 0 && React.createElement("button", { className: "rv-btn ghost", onClick: back, disabled: submitting }, "Kembali"),
-                step < 3 && React.createElement("button", { className: "rv-btn primary", onClick: next, disabled: !canNext },
-                    "Lanjut",
-                    step === 1 && slots.length > 0 ? ` · ${rupiah(slotTotal)}` : ""),
-                step === 3 && React.createElement("button", { className: "rv-btn primary", onClick: createBooking, disabled: submitting }, submitting ? "Memproses…" : `Bayar ${rupiah(total)}`))))));
+                            rupiah(unitPrice),
+                            "/jam) \u2014 bisa pilih lebih dari satu"),
+                        loadingSlots && React.createElement("div", { className: "rv-loading" }, "Memuat ketersediaan\u2026"),
+                        React.createElement("div", { className: "rv-grid" }, hours.map((h) => {
+                            const bk = isBooked(h) || pastHour(h);
+                            const sel = slots.indexOf(h) !== -1;
+                            const tea = freeIceTea(branch, date, h);
+                            return (React.createElement("button", { key: h, disabled: bk, onClick: () => toggleSlot(h), className: `rv-slot ${sel ? "sel" : ""} ${bk ? "bk" : ""}` },
+                                React.createElement("div", { className: "t" }, hhmm(h)),
+                                React.createElement("div", { className: "p" }, isBooked(h) ? "Penuh" : pastHour(h) ? "Lewat" : shortRp(slotPriceFor(branch, table, date))),
+                                tea && !bk && React.createElement("div", { className: "rv-free" }, "\uD83E\uDDCA 1 pitcher")));
+                        })),
+                        React.createElement("div", { className: "rv-legend" },
+                            React.createElement("span", null,
+                                React.createElement("i", { className: "rv-swatch", style: { background: "#fff", border: "1px solid #e8e0cf" } }),
+                                "Tersedia"),
+                            React.createElement("span", null,
+                                React.createElement("i", { className: "rv-swatch", style: { background: "#146c54" } }),
+                                "Dipilih"),
+                            React.createElement("span", null,
+                                React.createElement("i", { className: "rv-swatch", style: { background: "#f3efe3" } }),
+                                "Penuh/lewat")),
+                        slots.length > 0 && (React.createElement("div", { className: "rv-bar" },
+                            React.createElement("span", { className: "l" },
+                                slots.length,
+                                " jam \u00B7 ",
+                                table.name),
+                            React.createElement("span", { className: "v" }, rupiah(slotTotal)))))))),
+                step === 2 && (React.createElement("div", { className: "rv-card" },
+                    React.createElement("h2", { className: "rv-h" }, "Pesanan & data diri"),
+                    React.createElement("p", { className: "rv-sub" }, "1 meja untuk maks. 4 pemain."),
+                    React.createElement("div", { className: "rv-tabs" },
+                        React.createElement("button", { className: `rv-tab ${tab === "info" ? "on" : ""}`, onClick: () => setTab("info") }, "Data Diri"),
+                        React.createElement("button", { className: `rv-tab ${tab === "menu" ? "on" : ""}`, onClick: () => setTab("menu") },
+                            "Menu F&B",
+                            addonCount ? ` (${addonCount})` : "")),
+                    tab === "info" && (React.createElement("div", null,
+                        React.createElement("div", { className: "rv-carousel" }, FEATURED.map((f, i) => (React.createElement("div", { className: "rv-cslide", key: i },
+                            React.createElement("div", { className: "rv-cimg", style: f.img ? { backgroundImage: `url(${f.img})` } : {} }, !f.img && React.createElement("span", null, "Foto menyusul")),
+                            React.createElement("div", { className: "rv-cbody" },
+                                React.createElement("div", { className: "rv-cname" }, f.name),
+                                React.createElement("div", { className: "rv-cprice" }, rupiah(f.price))))))),
+                        React.createElement("div", { className: "rv-field" },
+                            React.createElement("label", { className: "rv-label" }, "Nama lengkap"),
+                            React.createElement("input", { className: `rv-input ${touched && errors.name ? "err" : ""}`, value: form.name, onChange: set("name"), placeholder: "Nama kamu" }),
+                            touched && errors.name && React.createElement("div", { className: "rv-errmsg" }, errors.name)),
+                        React.createElement("div", { className: "rv-row2" },
+                            React.createElement("div", { className: "rv-field" },
+                                React.createElement("label", { className: "rv-label" }, "Nomor WhatsApp"),
+                                React.createElement("input", { className: `rv-input ${touched && errors.phone ? "err" : ""}`, value: form.phone, onChange: set("phone"), placeholder: "0812xxxxxxx", inputMode: "tel" }),
+                                touched && errors.phone && React.createElement("div", { className: "rv-errmsg" }, errors.phone)),
+                            React.createElement("div", { className: "rv-field" },
+                                React.createElement("label", { className: "rv-label" },
+                                    "Email ",
+                                    React.createElement("span", { className: "rv-opt" }, "(opsional)")),
+                                React.createElement("input", { className: `rv-input ${touched && errors.email ? "err" : ""}`, value: form.email, onChange: set("email"), placeholder: "email@contoh.com", inputMode: "email" }),
+                                touched && errors.email && React.createElement("div", { className: "rv-errmsg" }, errors.email))),
+                        React.createElement("div", { className: "rv-field" },
+                            React.createElement("label", { className: "rv-label" },
+                                "Catatan ",
+                                React.createElement("span", { className: "rv-opt" }, "(opsional)")),
+                            React.createElement("input", { className: "rv-input", value: form.notes, onChange: set("notes"), placeholder: "Permintaan khusus\u2026" })))),
+                    tab === "menu" && (React.createElement("div", null,
+                        groupedAddons().map((g, gi) => (React.createElement("div", { key: g.cat },
+                            React.createElement("div", { className: `rv-cat ${gi === 0 ? "first" : ""}` }, g.cat),
+                            g.items.map((a) => (React.createElement("div", { key: a.id, className: "rv-addon" },
+                                React.createElement("div", null,
+                                    React.createElement("div", { className: "rv-addon-name" }, a.name),
+                                    React.createElement("div", { className: "rv-addon-price" }, rupiah(a.price))),
+                                React.createElement("div", { className: "rv-stepper" },
+                                    React.createElement("button", { className: "rv-sbtn", onClick: () => bumpAddon(a.id, -1, a.max), disabled: !addons[a.id] }, "\u2212"),
+                                    React.createElement("span", { className: "rv-qty" }, addons[a.id] || 0),
+                                    React.createElement("button", { className: "rv-sbtn", onClick: () => bumpAddon(a.id, 1, a.max), disabled: (addons[a.id] || 0) >= a.max }, "+")))))))),
+                        addonTotal > 0 && (React.createElement("div", { className: "rv-bar" },
+                            React.createElement("span", { className: "l" }, "Subtotal menu"),
+                            React.createElement("span", { className: "v" }, rupiah(addonTotal)))))))),
+                step === 3 && (React.createElement("div", { className: "rv-card" },
+                    React.createElement("h2", { className: "rv-h" }, "Cek reservasi kamu"),
+                    React.createElement("p", { className: "rv-sub" }, "Pastikan semua benar sebelum lanjut ke pembayaran."),
+                    React.createElement("div", { className: "rv-summary" },
+                        React.createElement("div", { className: "rv-srow" },
+                            React.createElement("span", { className: "rv-slabel" }, "Cabang"),
+                            React.createElement("span", { className: "rv-sval" }, branch.name)),
+                        React.createElement("div", { className: "rv-srow" },
+                            React.createElement("span", { className: "rv-slabel" }, "Meja"),
+                            React.createElement("span", { className: "rv-sval" },
+                                table.name,
+                                " \u00B7 ",
+                                table.type)),
+                        React.createElement("div", { className: "rv-srow" },
+                            React.createElement("span", { className: "rv-slabel" }, "Tanggal"),
+                            React.createElement("span", { className: "rv-sval" }, new Date(date).toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" }))),
+                        React.createElement("div", { className: "rv-srow" },
+                            React.createElement("span", { className: "rv-slabel" },
+                                "Jam (",
+                                slots.length,
+                                " jam)"),
+                            React.createElement("span", { className: "rv-sval" }, slots.map(hhmm).join(", "))),
+                        React.createElement("div", { className: "rv-srow" },
+                            React.createElement("span", { className: "rv-slabel" }, "Sewa meja"),
+                            React.createElement("span", { className: "rv-sval" }, rupiah(slotTotal))),
+                        ADDONS.filter((a) => addons[a.id]).map((a) => (React.createElement("div", { className: "rv-srow", key: a.id },
+                            React.createElement("span", { className: "rv-slabel" },
+                                a.name,
+                                " \u00D7",
+                                addons[a.id]),
+                            React.createElement("span", { className: "rv-sval" }, rupiah(addons[a.id] * a.price))))),
+                        React.createElement("div", { className: "rv-srow" },
+                            React.createElement("span", { className: "rv-slabel" }, "Nama"),
+                            React.createElement("span", { className: "rv-sval" }, form.name)),
+                        React.createElement("div", { className: "rv-srow" },
+                            React.createElement("span", { className: "rv-slabel" }, "WhatsApp"),
+                            React.createElement("span", { className: "rv-sval" }, form.phone)),
+                        form.email && React.createElement("div", { className: "rv-srow" },
+                            React.createElement("span", { className: "rv-slabel" }, "Email"),
+                            React.createElement("span", { className: "rv-sval" }, form.email)),
+                        form.notes && React.createElement("div", { className: "rv-srow" },
+                            React.createElement("span", { className: "rv-slabel" }, "Catatan"),
+                            React.createElement("span", { className: "rv-sval" }, form.notes)),
+                        React.createElement("div", { className: "rv-srow rv-total" },
+                            React.createElement("span", { className: "rv-slabel", style: { color: "#1c1a16", fontWeight: 700 } }, "Total bayar"),
+                            React.createElement("span", { className: "rv-sval" }, rupiah(total)))),
+                    anyFreeTea && React.createElement("p", { className: "rv-sub", style: { marginTop: 12, marginBottom: 0 } }, "\uD83E\uDDCA Termasuk gratis 1 pitcher es teh untuk jam 08:00\u201315:00 (weekday)."),
+                    submitError && React.createElement("div", { className: "rv-conflict", style: { marginTop: 14, marginBottom: 0 } }, submitError))),
+                step === 4 && booking && (React.createElement("div", { className: "rv-card rv-center" },
+                    React.createElement("div", { className: "rv-check" },
+                        React.createElement("svg", { width: "26", height: "26", viewBox: "0 0 24 24", fill: "none", strokeWidth: "3", strokeLinecap: "round", strokeLinejoin: "round" },
+                            React.createElement("path", { d: "M20 6 9 17l-5-5" }))),
+                    React.createElement("h2", { className: "rv-h" }, "Reservasi dibuat"),
+                    React.createElement("p", { className: "rv-sub" },
+                        "Kode ",
+                        React.createElement("b", null, booking.code),
+                        ". Transfer dengan nominal ",
+                        React.createElement("b", null, "tepat"),
+                        " di bawah untuk mengunci meja."),
+                    React.createElement("div", { className: "rv-va" },
+                        React.createElement("div", { className: "rv-va-label" },
+                            "Transfer ke ",
+                            booking.bankName || "BCA"),
+                        React.createElement("div", { className: "rv-va-num" }, booking.bankAccount || "(atur nomor rekening)"),
+                        React.createElement("div", { className: "rv-va-holder" },
+                            "a.n. ",
+                            booking.bankHolder || "(atur nama rekening)"),
+                        React.createElement("div", { className: "rv-va-amt" }, rupiah(booking.payable)),
+                        React.createElement("div", { className: "rv-va-note" },
+                            "Total ",
+                            rupiah(booking.total),
+                            " + kode unik ",
+                            booking.uniqueCode,
+                            " \u2014 transfer PAS sampai 3 digit terakhir."),
+                        React.createElement("button", { className: "rv-copy", onClick: copyAmount }, copied ? "Tersalin ✓" : "Salin nominal")),
+                    expired
+                        ? React.createElement("div", { className: "rv-count warn" }, "Waktu habis \u2014 meja sudah dilepas. Silakan pesan ulang.")
+                        : React.createElement("div", { className: `rv-count ${remaining < 120 ? "warn" : ""}` },
+                            "Selesaikan dalam ",
+                            mmss(remaining)),
+                    React.createElement("div", { className: "rv-note" },
+                        React.createElement("span", null, "\u2139\uFE0F"),
+                        React.createElement("span", null,
+                            "Buka BCA Mobile / m-BCA \u2192 ",
+                            React.createElement("b", null, "Transfer"),
+                            " \u2192 masukkan nomor rekening di atas \u2192 isi nominal ",
+                            React.createElement("b", null, rupiah(booking.payable)),
+                            " (pas). Lalu kirim bukti transfer ke WhatsApp kami. Meja ditahan 15 menit.")),
+                    BUSINESS_WHATSAPP && (React.createElement("a", { className: "rv-btn primary", href: waLink(BUSINESS_WHATSAPP) || undefined, target: "_blank", rel: "noopener noreferrer", style: { display: "block", textAlign: "center", textDecoration: "none", marginTop: 14 } }, "Kirim bukti transfer ke WhatsApp")),
+                    React.createElement("div", { className: "rv-nav" },
+                        React.createElement("button", { className: "rv-btn ghost", onClick: reset, style: { flex: 1 } }, "Buat reservasi baru")))),
+                step < 4 && (React.createElement("div", { className: "rv-nav" },
+                    step > 0 && React.createElement("button", { className: "rv-btn ghost", onClick: back, disabled: submitting }, "Kembali"),
+                    step < 3 && React.createElement("button", { className: "rv-btn primary", onClick: next, disabled: !canNext },
+                        "Lanjut",
+                        step === 1 && slots.length > 0 ? ` · ${rupiah(slotTotal)}` : ""),
+                    step === 3 && React.createElement("button", { className: "rv-btn primary", onClick: createBooking, disabled: submitting }, submitting ? "Memproses…" : `Bayar ${rupiah(total)}`))))))));
 }
 ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App, null));
 
