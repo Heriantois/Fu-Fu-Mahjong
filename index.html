@@ -60,7 +60,7 @@ function slotPriceFor(branch, table, iso) {
     if (branch.id === "bsd")
         return table.type === "VIP" ? 85000 : 75000;
     if (branch.id === "gs")
-        return isGSWeekend(iso) ? 60000 : 50000;
+        return isGSWeekend(iso) ? 50000 : 50000;
     return 50000;
 }
 function freeIceTea(branch, iso, hour) {
