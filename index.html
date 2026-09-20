@@ -60,7 +60,7 @@ function slotPriceFor(branch, table, iso) {
     if (branch.id === "bsd")
         return table.type === "VIP" ? 85000 : 75000;
     if (branch.id === "gs")
-        return isGSWeekend(iso) ? 50000 : 50000;
+        return isGSWeekend(iso) ? 60000 : 50000;
     return 50000;
 }
 function freeIceTea(branch, iso, hour) {
@@ -270,6 +270,9 @@ function App() {
     const [submitting, setSubmitting] = useState(false);
     const [submitError, setSubmitError] = useState("");
     const [remaining, setRemaining] = useState(0);
+    const [memberPhone, setMemberPhone] = useState("");
+    const [memberInfo, setMemberInfo] = useState(null); // {found,hoursRemaining,name} | {error}
+    const [memberChecking, setMemberChecking] = useState(false);
     // F&B order state
     const [fnbBranchId, setFnbBranchId] = useState(validQBranch);
     const [fnbTable, setFnbTable] = useState(qTable);
@@ -379,13 +382,35 @@ function App() {
             setStep((s) => s + 1);
     }
     function back() { setStep((s) => Math.max(0, s - 1)); }
-    async function createBooking() {
+    async function checkMember() {
+        const p = memberPhone.trim();
+        if (!p)
+            return;
+        setMemberChecking(true);
+        setMemberInfo(null);
+        try {
+            const res = await fetch(`${API_BASE}/api/member-lookup?phone=${encodeURIComponent(p)}`);
+            const d = await res.json();
+            setMemberChecking(false);
+            if (d.found)
+                setMemberInfo({ found: true, name: d.name, hoursRemaining: d.hoursRemaining });
+            else
+                setMemberInfo({ found: false });
+        }
+        catch (e) {
+            setMemberChecking(false);
+            setMemberInfo({ error: true });
+        }
+    }
+    async function createBooking(useMember) {
         const hoursSel = slots.slice();
         const chosenAddons = ADDONS.filter((a) => addons[a.id]).map((a) => ({ name: a.name, qty: addons[a.id], price: a.price }));
         const payload = {
             total, branchId: branch.id, tableId: table.id, branch: branch.name, table: table.name + " · " + table.type,
             date, hours: hoursSel, slots: hoursSel.map(hhmm), duration: hoursSel.length, addons: chosenAddons, ...form,
         };
+        if (useMember)
+            payload.memberPhone = memberPhone.trim();
         setSubmitting(true);
         setSubmitError("");
         try {
@@ -404,6 +429,14 @@ function App() {
                 setSlots([]);
                 setStep(1);
                 setRefreshKey((k) => k + 1);
+                return;
+            }
+            if (data.error === "insufficient") {
+                setSubmitError(`Saldo member kurang (sisa ${data.hoursRemaining} jam, butuh ${hoursSel.length} jam).`);
+                return;
+            }
+            if (data.error === "member_not_found") {
+                setSubmitError("Nomor member tidak ditemukan.");
                 return;
             }
             setSubmitError("Gagal membuat reservasi. Silakan coba lagi.");
@@ -433,6 +466,8 @@ function App() {
         setConflict([]);
         setSubmitError("");
         setTab("info");
+        setMemberPhone("");
+        setMemberInfo(null);
     }
     async function submitFnbOrder() {
         const phone = fnbPhone.replace(/[\s-]/g, "");
@@ -500,6 +535,8 @@ function App() {
             React.createElement("div", { className: "rv-modetabs" },
                 React.createElement("button", { className: mode === "reserve" ? "on" : "", onClick: () => setMode("reserve") }, "Reservasi Meja"),
                 React.createElement("button", { className: mode === "fnb" ? "on" : "", onClick: () => setMode("fnb") }, "Pesan F&B")),
+            React.createElement("div", { style: { textAlign: "center", marginBottom: 14 } },
+                React.createElement("a", { href: "/cek", style: { fontSize: 12.5, color: "#6b6459", textDecoration: "none", fontWeight: 600 } }, "Cek saldo member \u2192")),
             mode === "fnb" && (React.createElement("div", { className: "rv-card" },
                 React.createElement("h2", { className: "rv-h" }, "Pesan Makanan & Minuman"),
                 React.createElement("p", { className: "rv-sub" }, "Sudah di tempat? Pilih menu, isi nomor meja, lalu bayar via transfer. Pesanan disiapkan setelah pembayaran dikonfirmasi."),
@@ -744,9 +781,59 @@ function App() {
                         React.createElement("div", { className: "rv-srow rv-total" },
                             React.createElement("span", { className: "rv-slabel", style: { color: "#1c1a16", fontWeight: 700 } }, "Total bayar"),
                             React.createElement("span", { className: "rv-sval" }, rupiah(total)))),
+                    addonTotal === 0 && (React.createElement("div", { style: { marginTop: 14, border: "1px solid var(--line)", borderRadius: 12, padding: 14 } },
+                        React.createElement("label", { className: "rv-label" },
+                            "Punya kartu member? ",
+                            React.createElement("span", { className: "rv-opt" }, "(bayar pakai jam)")),
+                        React.createElement("div", { style: { display: "flex", gap: 8 } },
+                            React.createElement("input", { className: "rv-input", value: memberPhone, onChange: (e) => { setMemberPhone(e.target.value); setMemberInfo(null); }, placeholder: "Nomor WhatsApp member", inputMode: "tel" }),
+                            React.createElement("button", { className: "rv-btn ghost", style: { flex: "none" }, onClick: checkMember, disabled: memberChecking || !memberPhone.trim() }, memberChecking ? "…" : "Cek")),
+                        memberInfo && memberInfo.found && (React.createElement("div", { style: { marginTop: 10, fontSize: 13 } },
+                            "Halo ",
+                            memberInfo.name || "member",
+                            " \u2014 sisa ",
+                            React.createElement("b", null,
+                                memberInfo.hoursRemaining,
+                                " jam"),
+                            ".",
+                            memberInfo.hoursRemaining >= slots.length
+                                ? React.createElement("button", { className: "rv-btn primary", style: { marginTop: 10, display: "block", width: "100%" }, onClick: () => createBooking(true), disabled: submitting },
+                                    "Bayar dengan ",
+                                    slots.length,
+                                    " jam member")
+                                : React.createElement("div", { className: "rv-errmsg", style: { marginTop: 6 } },
+                                    "Saldo kurang (butuh ",
+                                    slots.length,
+                                    " jam)."))),
+                        memberInfo && memberInfo.found === false && React.createElement("div", { className: "rv-errmsg", style: { marginTop: 8 } }, "Nomor member tidak ditemukan."))),
+                    addonTotal > 0 && (React.createElement("p", { className: "rv-sub", style: { marginTop: 12, marginBottom: 0, fontSize: 11.5 } }, "Jam member hanya untuk sewa meja \u2014 hapus item menu F&B kalau mau bayar pakai jam.")),
                     anyFreeTea && React.createElement("p", { className: "rv-sub", style: { marginTop: 12, marginBottom: 0 } }, "\uD83E\uDDCA Termasuk gratis 1 pitcher es teh untuk jam 08:00\u201315:00 (weekday)."),
                     submitError && React.createElement("div", { className: "rv-conflict", style: { marginTop: 14, marginBottom: 0 } }, submitError))),
-                step === 4 && booking && (React.createElement("div", { className: "rv-card rv-center" },
+                step === 4 && booking && booking.member && (React.createElement("div", { className: "rv-card rv-center" },
+                    React.createElement("div", { className: "rv-check" },
+                        React.createElement("svg", { width: "26", height: "26", viewBox: "0 0 24 24", fill: "none", strokeWidth: "3", strokeLinecap: "round", strokeLinejoin: "round" },
+                            React.createElement("path", { d: "M20 6 9 17l-5-5" }))),
+                    React.createElement("h2", { className: "rv-h" }, "Reservasi terkonfirmasi"),
+                    React.createElement("p", { className: "rv-sub" },
+                        "Kode ",
+                        React.createElement("b", null, booking.code),
+                        " \u00B7 dibayar dengan jam member."),
+                    React.createElement("div", { className: "rv-va", style: { background: "#146c54" } },
+                        React.createElement("div", { className: "rv-va-label" }, "Terpakai"),
+                        React.createElement("div", { className: "rv-va-amt", style: { color: "#fff" } },
+                            booking.usedHours,
+                            " jam"),
+                        React.createElement("div", { className: "rv-va-note" },
+                            "Sisa saldo: ",
+                            React.createElement("b", null,
+                                booking.hoursRemaining,
+                                " jam"))),
+                    React.createElement("div", { className: "rv-note" },
+                        React.createElement("span", null, "\u2705"),
+                        React.createElement("span", null, "Meja sudah dikunci. Detail & sisa saldo juga dikirim ke WhatsApp kamu. Sampai jumpa di meja!")),
+                    React.createElement("div", { className: "rv-nav" },
+                        React.createElement("button", { className: "rv-btn ghost", onClick: reset, style: { flex: 1 } }, "Buat reservasi baru")))),
+                step === 4 && booking && !booking.member && (React.createElement("div", { className: "rv-card rv-center" },
                     React.createElement("div", { className: "rv-check" },
                         React.createElement("svg", { width: "26", height: "26", viewBox: "0 0 24 24", fill: "none", strokeWidth: "3", strokeLinecap: "round", strokeLinejoin: "round" },
                             React.createElement("path", { d: "M20 6 9 17l-5-5" }))),
@@ -794,7 +881,7 @@ function App() {
                     step < 3 && React.createElement("button", { className: "rv-btn primary", onClick: next, disabled: !canNext },
                         "Lanjut",
                         step === 1 && slots.length > 0 ? ` · ${rupiah(slotTotal)}` : ""),
-                    step === 3 && React.createElement("button", { className: "rv-btn primary", onClick: createBooking, disabled: submitting }, submitting ? "Memproses…" : `Bayar ${rupiah(total)}`))))))));
+                    step === 3 && React.createElement("button", { className: "rv-btn primary", onClick: () => createBooking(false), disabled: submitting }, submitting ? "Memproses…" : `Bayar ${rupiah(total)}`))))))));
 }
 ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App, null));
 

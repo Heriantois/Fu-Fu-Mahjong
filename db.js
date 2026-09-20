@@ -45,6 +45,16 @@ db.exec(`
     FOREIGN KEY (reservation_id) REFERENCES reservations(id) ON DELETE CASCADE
   );
   CREATE INDEX IF NOT EXISTS idx_slots_lookup ON slots (branch_id, table_id, date, hour);
+  CREATE TABLE IF NOT EXISTS members (
+    phone TEXT PRIMARY KEY,
+    name TEXT, tier TEXT,
+    hours_remaining REAL NOT NULL DEFAULT 0,
+    created_at INTEGER, updated_at INTEGER
+  );
+  CREATE TABLE IF NOT EXISTS member_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    phone TEXT, delta REAL, reason TEXT, ref TEXT, at INTEGER
+  );
 `);
 
 // Safe migrations for databases created by an older version.
@@ -107,7 +117,29 @@ export function createReservation(b) {
     ).all(b.branchId, b.tableId, b.date, ...hours).map((r) => r.hour);
     if (taken.length) return { ok: false, conflict: taken };
 
-    // unique payable amount (base + 1..999) not shared with other pending bookings
+    // --- Member payment path: pay with prepaid hours ---
+    if (b.memberPhone) {
+      const p = normPhone(b.memberPhone);
+      const m = db.prepare(`SELECT * FROM members WHERE phone=?`).get(p);
+      if (!m) return { ok: false, error: "member_not_found" };
+      const need = hours.length;
+      if (m.hours_remaining < need) return { ok: false, error: "insufficient", hoursRemaining: m.hours_remaining };
+      const info = insertReservation.run({
+        code: b.code, branch_id: b.branchId, branch_name: b.branch,
+        table_id: b.tableId, table_name: b.table, date: b.date,
+        name: b.name, phone: b.phone, email: b.email || null,
+        notes: b.notes || null, addons: JSON.stringify(b.addons || []), total: base,
+        unique_code: null, payable: null, expires_at: null, created_at: now,
+      });
+      db.prepare(`UPDATE reservations SET status='paid', paid_at=? WHERE id=?`).run(now, info.lastInsertRowid);
+      for (const h of hours) insertSlot.run(info.lastInsertRowid, b.branchId, b.tableId, b.date, h);
+      const left = m.hours_remaining - need;
+      db.prepare(`UPDATE members SET hours_remaining=?, updated_at=? WHERE phone=?`).run(left, now, p);
+      db.prepare(`INSERT INTO member_log (phone,delta,reason,ref,at) VALUES (?,?,?,?,?)`).run(p, -need, "booking", b.code, now);
+      return { ok: true, member: true, hoursRemaining: left, usedHours: need };
+    }
+
+    // unique payable amount (base + 1..499) not shared with other pending bookings
     const used = new Set(
       db.prepare(`SELECT payable FROM reservations WHERE status='pending' AND payable IS NOT NULL`)
         .all().map((r) => r.payable)
@@ -161,6 +193,36 @@ export function createFnbOrder(b) {
     return { ok: true, expiresAt, uniqueCode, payable };
   });
   return run.immediate();
+}
+
+// ---- Members (prepaid hours wallet) ----
+function normPhone(p) { return String(p || "").replace(/\D/g, "").replace(/^0/, "62"); }
+
+export function getMember(phone) {
+  const p = normPhone(phone);
+  return db.prepare(`SELECT * FROM members WHERE phone=?`).get(p) || null;
+}
+export function listMembers() {
+  return db.prepare(`SELECT phone, name, tier, hours_remaining, created_at, updated_at FROM members ORDER BY updated_at DESC`).all();
+}
+export function topUpMember({ phone, name, tier, hours, reason }) {
+  const p = normPhone(phone);
+  if (!p) return null;
+  const now = Date.now();
+  const add = Number(hours) || 0;
+  const tx = db.transaction(() => {
+    const m = db.prepare(`SELECT * FROM members WHERE phone=?`).get(p);
+    if (m) {
+      db.prepare(`UPDATE members SET name=COALESCE(?,name), tier=COALESCE(?,tier), hours_remaining=hours_remaining+?, updated_at=? WHERE phone=?`)
+        .run(name || null, tier || null, add, now, p);
+    } else {
+      db.prepare(`INSERT INTO members (phone,name,tier,hours_remaining,created_at,updated_at) VALUES (?,?,?,?,?,?)`)
+        .run(p, name || null, tier || null, add, now, now);
+    }
+    db.prepare(`INSERT INTO member_log (phone,delta,reason,ref,at) VALUES (?,?,?,?,?)`).run(p, add, reason || "top-up", null, now);
+    return db.prepare(`SELECT * FROM members WHERE phone=?`).get(p);
+  });
+  return tx();
 }
 
 export function markPaid(code) {

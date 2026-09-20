@@ -45,6 +45,8 @@
   @media(max-width:720px){ table,thead,tbody,th,td,tr{display:block;} thead{display:none;}
     tr{border:1px solid var(--line);border-radius:12px;margin-bottom:10px;background:var(--card);padding:6px 4px;}
     td{border:none;padding:6px 12px;} td::before{content:attr(data-l);color:var(--muted);font-size:11px;display:block;font-weight:700;text-transform:uppercase;} }
+.min{width:100%;box-sizing:border-box;font:inherit;font-size:14px;padding:9px 11px;border:1px solid var(--line);border-radius:9px;margin-bottom:8px;}
+.rvl{display:block;font-size:12px;font-weight:600;margin-bottom:4px;}
 </style>
 </head>
 <body>
@@ -58,20 +60,52 @@
   </div>
 
   <div id="dash" style="display:none;">
-    <h1>Daftar Reservasi</h1>
-    <div class="sub" id="counts"></div>
-    <div class="bar">
-      <div class="pills">
-        <span class="pill on" data-f="all" onclick="setFilter('all',this)">Semua</span>
-        <span class="pill" data-f="pending" onclick="setFilter('pending',this)">Menunggu</span>
-        <span class="pill" data-f="paid" onclick="setFilter('paid',this)">Lunas</span>
-      </div>
-      <div class="sp"></div>
-      <button class="btn ghost small" onclick="load()">↻ Refresh</button>
-      <button class="btn ghost small" onclick="logout()">Keluar</button>
+    <div class="pills" style="margin-bottom:14px;">
+      <span class="pill on" id="vw-resv" onclick="showView('resv')">Reservasi</span>
+      <span class="pill" id="vw-mem" onclick="showView('mem')">Member</span>
     </div>
-    <div class="pills" id="branchPills" style="margin-bottom:14px;"></div>
-    <div id="tableWrap"></div>
+
+    <div id="resvView">
+      <h1>Daftar Reservasi</h1>
+      <div class="sub" id="counts"></div>
+      <div class="bar">
+        <div class="pills">
+          <span class="pill on" data-f="all" onclick="setFilter('all',this)">Semua</span>
+          <span class="pill" data-f="pending" onclick="setFilter('pending',this)">Menunggu</span>
+          <span class="pill" data-f="paid" onclick="setFilter('paid',this)">Lunas</span>
+        </div>
+        <div class="sp"></div>
+        <button class="btn ghost small" onclick="load()">↻ Refresh</button>
+        <button class="btn ghost small" onclick="logout()">Keluar</button>
+      </div>
+      <div class="pills" id="branchPills" style="margin-bottom:14px;"></div>
+      <div id="tableWrap"></div>
+    </div>
+
+    <div id="memView" style="display:none;">
+      <h1>Member (Kartu Jam)</h1>
+      <div class="sub">Jual kartu atau tambah jam. Member bayar sewa meja pakai jam ini.</div>
+      <div class="qr-card" style="text-align:left;max-width:460px;margin-bottom:18px;">
+        <div style="font-weight:800;margin-bottom:10px;">Tambah / Top-up member</div>
+        <label class="rvl">Nomor WhatsApp</label>
+        <input id="m-phone" class="min" placeholder="0812xxxxxxx" />
+        <label class="rvl">Nama</label>
+        <input id="m-name" class="min" placeholder="Nama member" />
+        <label class="rvl">Tier</label>
+        <select id="m-tier" class="min"><option value="">—</option><option>Silver</option><option>Gold</option><option>Platinum</option></select>
+        <label class="rvl">Tambah jam</label>
+        <input id="m-hours" class="min" type="number" placeholder="mis. 10" />
+        <div style="display:flex;gap:6px;margin:6px 0 12px;">
+          <button class="btn ghost small" onclick="setHours(10,'Silver')">Silver +10</button>
+          <button class="btn ghost small" onclick="setHours(20,'Gold')">Gold +20</button>
+          <button class="btn ghost small" onclick="setHours(30,'Platinum')">Platinum +30</button>
+        </div>
+        <button class="btn primary" style="width:100%" onclick="topup()">Simpan / Top-up</button>
+        <div id="m-msg" class="sub" style="margin-top:10px;"></div>
+      </div>
+      <button class="btn ghost small" onclick="loadMembers()" style="margin-bottom:12px;">↻ Refresh member</button>
+      <div id="memWrap"></div>
+    </div>
   </div>
 </div>
 
@@ -104,6 +138,38 @@
   function showDash(){ document.getElementById("login").style.display="none"; document.getElementById("dash").style.display="block"; }
   function setFilter(f, el){ FILTER=f; document.querySelectorAll(".bar .pill").forEach(function(p){p.classList.remove("on");}); el.classList.add("on"); render(); }
   function setBranchFilter(name, el){ BRANCHF=name; sessionStorage.setItem("fufu_branch", name); document.querySelectorAll("#branchPills .pill").forEach(function(p){p.classList.remove("on");}); el.classList.add("on"); render(); }
+
+  function showView(v){
+    document.getElementById("resvView").style.display = v==="resv"?"block":"none";
+    document.getElementById("memView").style.display = v==="mem"?"block":"none";
+    document.getElementById("vw-resv").classList.toggle("on", v==="resv");
+    document.getElementById("vw-mem").classList.toggle("on", v==="mem");
+    if(v==="mem") loadMembers();
+  }
+  function setHours(h, tier){ document.getElementById("m-hours").value=h; document.getElementById("m-tier").value=tier; }
+  async function topup(){
+    var phone=document.getElementById("m-phone").value.trim();
+    var name=document.getElementById("m-name").value.trim();
+    var tier=document.getElementById("m-tier").value;
+    var hours=Number(document.getElementById("m-hours").value)||0;
+    var msg=document.getElementById("m-msg");
+    if(!phone||!hours){ msg.textContent="Isi nomor WhatsApp dan jumlah jam."; return; }
+    msg.textContent="Menyimpan…";
+    var r=await api("/api/members/topup",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({phone:phone,name:name,tier:tier,hours:hours})});
+    var j=await r.json();
+    if(j.ok){ msg.textContent="Tersimpan. Sisa "+j.member.hoursRemaining+" jam."; document.getElementById("m-phone").value=""; document.getElementById("m-name").value=""; document.getElementById("m-hours").value=""; loadMembers(); }
+    else { msg.textContent="Gagal: "+(j.error||"coba lagi"); }
+  }
+  async function loadMembers(){
+    var r=await api("/api/members"); if(r.status===401){logout();return;}
+    var j=await r.json(); var m=j.members||[];
+    if(!m.length){ document.getElementById("memWrap").innerHTML='<div class="empty">Belum ada member.</div>'; return; }
+    var html='<table><thead><tr><th>Nama</th><th>WhatsApp</th><th>Tier</th><th>Sisa Jam</th></tr></thead><tbody>';
+    m.forEach(function(x){ html+='<tr><td data-l="Nama">'+(x.name||"-")+'</td><td data-l="WhatsApp">'+x.phone+'</td><td data-l="Tier">'+(x.tier||"-")+'</td><td data-l="Sisa Jam"><b>'+x.hours_remaining+' jam</b></td></tr>'; });
+    html+='</tbody></table>';
+    document.getElementById("memWrap").innerHTML=html;
+  }
+
 
   async function load(){
     var r = await api("/api/reservations");

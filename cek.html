@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Cek Saldo Member — Fu Fu Mahjong & Cafe</title>
+<style>
+  :root{--ink:#1c1a16;--paper:#faf6ec;--card:#fffdf7;--brand:#146c54;--line:#e8e0cf;--muted:#6b6459;--gold:#c2963a;}
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:'Plus Jakarta Sans',system-ui,-apple-system,Arial,sans-serif;padding:28px 16px 64px;-webkit-font-smoothing:antialiased;}
+  .wrap{max-width:420px;margin:0 auto;}
+  .logo{display:block;height:96px;margin:0 auto 4px;}
+  .tag{text-align:center;color:var(--muted);font-size:13.5px;margin-bottom:22px;}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px;}
+  h1{font-size:17px;margin:0 0 4px;}
+  .sub{color:var(--muted);font-size:13.5px;margin:0 0 16px;}
+  label{display:block;font-size:13px;font-weight:600;margin-bottom:7px;}
+  input{width:100%;box-sizing:border-box;font:inherit;font-size:15px;padding:11px 13px;border:1px solid var(--line);border-radius:10px;background:#fff;}
+  input:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px rgba(20,108,84,.12);}
+  .btn{width:100%;margin-top:12px;font:inherit;font-size:14.5px;font-weight:700;cursor:pointer;border:none;border-radius:11px;padding:13px;background:var(--brand);color:#fff;}
+  .btn:hover{background:#0f5642;}
+  .btn:disabled{opacity:.5;cursor:not-allowed;}
+  .result{margin-top:18px;text-align:center;border:1px solid var(--line);border-radius:14px;padding:22px;background:#fff;}
+  .r-name{font-size:14px;color:var(--muted);}
+  .r-tier{display:inline-block;font-size:11.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--gold);margin-top:2px;}
+  .r-hours{font-size:40px;font-weight:800;color:var(--brand);margin-top:8px;line-height:1;}
+  .r-unit{font-size:14px;color:var(--muted);margin-top:2px;}
+  .notfound{margin-top:18px;color:#8f2f28;font-size:13.5px;text-align:center;line-height:1.5;}
+  .foot{text-align:center;font-size:11.5px;color:var(--muted);margin-top:18px;line-height:1.6;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <img class="logo" src="/fufu-logo.png" alt="Fu Fu Mahjong & Cafe" />
+  <div class="tag">Cek sisa jam member</div>
+  <div class="card">
+    <h1>Cek saldo kartu member</h1>
+    <p class="sub">Masukkan nomor WhatsApp yang terdaftar sebagai member.</p>
+    <label>Nomor WhatsApp</label>
+    <input id="phone" inputmode="tel" placeholder="0812xxxxxxx" />
+    <button class="btn" id="btn" onclick="check()">Cek saldo</button>
+    <div id="out"></div>
+  </div>
+  <div class="foot">Belum jadi member? Tanyakan kartu Silver / Gold / Platinum di kasir.</div>
+</div>
+
+<script>
+  var out = document.getElementById("out");
+  var btn = document.getElementById("btn");
+  document.getElementById("phone").addEventListener("keydown", function(e){ if(e.key==="Enter") check(); });
+
+  async function check(){
+    var phone = document.getElementById("phone").value.trim();
+    if(!phone){ return; }
+    btn.disabled = true; out.innerHTML = '<div class="sub" style="text-align:center;margin-top:16px;">Mengecek…</div>';
+    try{
+      var r = await fetch("/api/member-lookup?phone=" + encodeURIComponent(phone));
+      var j = await r.json();
+      btn.disabled = false;
+      if(j.found){
+        out.innerHTML =
+          '<div class="result">' +
+            '<div class="r-name">' + (j.name || "Member") + '</div>' +
+            (j.tier ? '<div class="r-tier">' + j.tier + '</div>' : '') +
+            '<div class="r-hours">' + j.hoursRemaining + '</div>' +
+            '<div class="r-unit">jam tersisa</div>' +
+          '</div>';
+      } else {
+        out.innerHTML = '<div class="notfound">Nomor ini belum terdaftar sebagai member.<br>Daftar kartu di kasir untuk mulai main pakai jam.</div>';
+      }
+    }catch(e){
+      btn.disabled = false;
+      out.innerHTML = '<div class="notfound">Gagal terhubung. Coba lagi.</div>';
+    }
+  }
+</script>
+</body>
+</html>

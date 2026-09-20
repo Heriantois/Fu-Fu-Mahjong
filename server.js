@@ -18,6 +18,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   getBookedHours, createReservation, createFnbOrder, markPaid, markCancelled, listReservations, getByCode,
+  getMember, listMembers, topUpMember,
 } from "./db.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -353,6 +354,23 @@ function waFnbText(b) {
   ].filter((x) => x !== "").join("\n");
 }
 
+function waMemberText(b) {
+  const jam = (b.slots || []).join(", ");
+  return [
+    `*Reservasi TERKONFIRMASI (Member)* ✅`,
+    `${BUSINESS_NAME}`,
+    ``,
+    `Kode: ${b.code}`,
+    `Cabang: ${b.branch}`,
+    `Meja: ${b.table}`,
+    `Tanggal: ${formatDateID(b.date)}`,
+    `Jam: ${jam}`,
+    ``,
+    `Terpakai ${b.usedHours} jam. Sisa saldo: *${b.hoursRemaining} jam*.`,
+    `Sampai jumpa di meja! 🀄`,
+  ].join("\n");
+}
+
 function requireAdmin(req, res) {
   if (!ADMIN_KEY || (req.query.key !== ADMIN_KEY && req.get("x-admin-key") !== ADMIN_KEY)) {
     res.status(401).json({ ok: false, error: "unauthorized" });
@@ -366,6 +384,7 @@ function requireAdmin(req, res) {
 app.get("/health", (_req, res) => res.send("Reservasi backend jalan ✅"));
 app.get("/", (_req, res) => res.sendFile(path.join(__dirname, "index.html")));
 app.get("/admin", (_req, res) => res.sendFile(path.join(__dirname, "admin.html")));
+app.get("/cek", (_req, res) => res.sendFile(path.join(__dirname, "cek.html")));
 app.get("/fufu-logo.png", (_req, res) => res.sendFile(path.join(__dirname, "fufu-logo.png")));
 app.use("/img", express.static(path.join(__dirname, "img"))); // foto menu (opsional): taruh file di folder "img"
 
@@ -375,6 +394,37 @@ app.get("/api/availability", (req, res) => {
   res.json({ ok: true, bookedHours: getBookedHours(branch, table, date) });
 });
 
+// Public: check a member's remaining hours by phone.
+app.get("/api/member-lookup", (req, res) => {
+  const m = getMember(req.query.phone || "");
+  if (!m) return res.json({ ok: true, found: false });
+  res.json({ ok: true, found: true, name: m.name, tier: m.tier, hoursRemaining: m.hours_remaining });
+});
+
+// Owner: list members.
+app.get("/api/members", (req, res) => {
+  if (!requireAdmin(req, res)) return;
+  res.json({ ok: true, members: listMembers() });
+});
+
+// Owner: add a member or top up hours (sell a card).
+app.post("/api/members/topup", (req, res) => {
+  if (!requireAdmin(req, res)) return;
+  const b = req.body || {};
+  if (!b.phone) return res.status(400).json({ ok: false, error: "phone wajib" });
+  const m = topUpMember({ phone: b.phone, name: b.name, tier: b.tier, hours: b.hours, reason: b.reason });
+  if (!m) return res.status(400).json({ ok: false, error: "gagal" });
+  // notify member on WhatsApp about their new balance
+  safeWA(b.phone, [
+    `*Kartu Member ${BUSINESS_NAME}*`,
+    b.tier ? `Tier: ${b.tier}` : "",
+    `+${Number(b.hours) || 0} jam ditambahkan.`,
+    `Sisa saldo: *${m.hours_remaining} jam*.`,
+    `Tunjukkan nomor WhatsApp ini saat reservasi untuk bayar pakai jam. 🀄`,
+  ].filter((x) => x !== "").join("\n"));
+  res.json({ ok: true, member: { phone: m.phone, name: m.name, tier: m.tier, hoursRemaining: m.hours_remaining } });
+});
+
 app.post("/api/reservations", async (req, res) => {
   const body = req.body || {};
   const problems = validate(body);
@@ -382,12 +432,23 @@ app.post("/api/reservations", async (req, res) => {
 
   const code = genCode();
   const result = createReservation({ ...body, code });
-  if (!result.ok) return res.status(409).json({ ok: false, conflict: result.conflict || [] });
+  if (!result.ok && result.conflict) return res.status(409).json({ ok: false, conflict: result.conflict });
+  if (!result.ok && result.error === "member_not_found") return res.status(400).json({ ok: false, error: "member_not_found" });
+  if (!result.ok && result.error === "insufficient") return res.status(400).json({ ok: false, error: "insufficient", hoursRemaining: result.hoursRemaining });
+  if (!result.ok) return res.status(400).json({ ok: false, error: "gagal" });
+
+  // --- Member-paid booking (hours deducted, confirmed instantly) ---
+  if (result.member) {
+    console.log(`[reservasi] ${code} MEMBER @ ${body.branch} · ${body.table} ${body.date} [${(body.hours || []).join(",")}] -${result.usedHours} jam`);
+    res.json({ ok: true, code, member: true, usedHours: result.usedHours, hoursRemaining: result.hoursRemaining });
+    safeWA(body.phone, waMemberText({ ...body, code, usedHours: result.usedHours, hoursRemaining: result.hoursRemaining }));
+    return;
+  }
 
   const full = { ...body, code, payable: result.payable, uniqueCode: result.uniqueCode };
   console.log(`[reservasi] ${code} @ ${body.branch} · ${body.table} ${body.date} [${(body.hours || []).join(",")}] = ${rupiah(result.payable)}`);
 
-  // Answer the browser immediately, then email in the background.
+  // Answer the browser immediately, then WhatsApp in the background.
   res.json({
     ok: true, code,
     total: body.total, payable: result.payable, uniqueCode: result.uniqueCode,
@@ -395,7 +456,6 @@ app.post("/api/reservations", async (req, res) => {
     expiresAt: result.expiresAt,
   });
 
-  // Email dinonaktifkan — notifikasi lewat WhatsApp saja.
   safeWA(body.phone, waBookingText(full));
 });
 
