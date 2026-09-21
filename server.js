@@ -62,12 +62,16 @@ const mailer = (SMTP_USER && SMTP_PASS)
 // Peraturan bermain (muncul di email invoice). Silakan edit sesuai kebutuhan.
 const HOUSE_RULES = [
   "Reservasi berlaku untuk 1 meja (maksimal 4 pemain).",
-  "Mohon datang tepat waktu. Meja ditahan maksimal 15 menit dari jam mulai; lewat dari itu dianggap hangus tanpa pengembalian dana.",
+  "Mohon datang tepat waktu. Meja ditahan maksimal 30 menit dari jam mulai; lewat dari itu dianggap hangus tanpa pengembalian dana.",
   "Waktu sewa dihitung per jam sesuai reservasi; perpanjangan tergantung ketersediaan.",
   "Pembayaran yang sudah masuk tidak dapat dikembalikan (no refund).",
   "Jaga kebersihan meja dan kelengkapan set mahjong. Kerusakan atau kehilangan menjadi tanggung jawab penyewa.",
-  "Dilarang membawa makanan/minuman dari luar; silakan pesan dari menu kafe.",
+  "Dilarang berjudi, Penyewa membebaskan Manajemen Fu FU Mahjong dari segala tuntutan hukum akibat penyalah gunaan.",
+  "Mohon tidak membawa makanan dan minuman dari luar, kami menyediakan dengan harga terjangkau",
+  "Segala kehilangan tidak menjadi tanggung jawab pengelola",
   "Mohon menjaga ketenangan dan kenyamanan bersama pengunjung lain.",
+  "Iqos diperbolehkan dengan syarat tidak mengganggu pengunjung lain, Merokok dan Vape dilarang.",
+  "Penyewa setuju dan memperbolehkan pengelola mengambil foto atau dokumentasi yang di anggap perlu dan tidak melanggar norma - normma.",
 ];
 
 // --- helpers ---------------------------------------------------------------
