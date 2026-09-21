@@ -55,6 +55,19 @@ db.exec(`
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     phone TEXT, delta REAL, reason TEXT, ref TEXT, at INTEGER
   );
+  CREATE TABLE IF NOT EXISTS sessions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    code TEXT UNIQUE NOT NULL,
+    branch_id TEXT, branch_name TEXT,
+    table_id TEXT, table_name TEXT,
+    name TEXT, phone TEXT,
+    rate INTEGER,
+    started_at INTEGER NOT NULL,
+    ended_at INTEGER,
+    minutes INTEGER, blocks INTEGER, amount INTEGER,
+    status TEXT NOT NULL DEFAULT 'open',   -- open | closed | paid
+    notes TEXT
+  );
 `);
 
 // Safe migrations for databases created by an older version.
@@ -223,6 +236,45 @@ export function topUpMember({ phone, name, tier, hours, reason }) {
     return db.prepare(`SELECT * FROM members WHERE phone=?`).get(p);
   });
   return tx();
+}
+
+// ---- Walk-in sessions (pay as you go, billed per 15-minute block) ----
+export function startSession(b) {
+  const now = Date.now();
+  const code = "WI-" + Math.random().toString(36).slice(2, 7).toUpperCase();
+  db.prepare(`
+    INSERT INTO sessions (code, branch_id, branch_name, table_id, table_name, name, phone, rate, started_at, status)
+    VALUES (?,?,?,?,?,?,?,?,?, 'open')
+  `).run(code, b.branchId, b.branch, b.tableId || null, b.table_name, b.name || null, b.phone || null, Number(b.rate) || 0, now);
+  return db.prepare(`SELECT * FROM sessions WHERE code=?`).get(code);
+}
+
+// Close a session: compute minutes, 15-min blocks (rounded up), and amount.
+export function endSession(code) {
+  const s = db.prepare(`SELECT * FROM sessions WHERE code=? AND status='open'`).get(code);
+  if (!s) return null;
+  const now = Date.now();
+  const minutes = Math.max(1, Math.round((now - s.started_at) / 60000));
+  const blocks = Math.ceil(minutes / 15);                 // per 15-minute block, rounded up
+  const amount = Math.round((s.rate / 4) * blocks);        // rate is per hour = 4 blocks
+  db.prepare(`UPDATE sessions SET ended_at=?, minutes=?, blocks=?, amount=?, status='closed' WHERE id=?`)
+    .run(now, minutes, blocks, amount, s.id);
+  return db.prepare(`SELECT * FROM sessions WHERE id=?`).get(s.id);
+}
+
+export function paySession(code) {
+  const info = db.prepare(`UPDATE sessions SET status='paid' WHERE code=? AND status='closed'`).run(code);
+  if (info.changes === 0) return null;
+  return db.prepare(`SELECT * FROM sessions WHERE code=?`).get(code);
+}
+
+export function cancelSession(code) {
+  const info = db.prepare(`DELETE FROM sessions WHERE code=? AND status='open'`).run(code);
+  return info.changes > 0;
+}
+
+export function listSessions(limit = 100) {
+  return db.prepare(`SELECT * FROM sessions ORDER BY id DESC LIMIT ?`).all(limit);
 }
 
 export function markPaid(code) {

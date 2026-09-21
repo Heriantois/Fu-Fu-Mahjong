@@ -19,6 +19,7 @@ import { fileURLToPath } from "node:url";
 import {
   getBookedHours, createReservation, createFnbOrder, markPaid, markCancelled, listReservations, getByCode,
   getMember, listMembers, topUpMember,
+  startSession, endSession, paySession, cancelSession, listSessions,
 } from "./db.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -62,16 +63,12 @@ const mailer = (SMTP_USER && SMTP_PASS)
 // Peraturan bermain (muncul di email invoice). Silakan edit sesuai kebutuhan.
 const HOUSE_RULES = [
   "Reservasi berlaku untuk 1 meja (maksimal 4 pemain).",
-  "Mohon datang tepat waktu. Meja ditahan maksimal 30 menit dari jam mulai; lewat dari itu dianggap hangus tanpa pengembalian dana.",
+  "Mohon datang tepat waktu. Meja ditahan maksimal 15 menit dari jam mulai; lewat dari itu dianggap hangus tanpa pengembalian dana.",
   "Waktu sewa dihitung per jam sesuai reservasi; perpanjangan tergantung ketersediaan.",
   "Pembayaran yang sudah masuk tidak dapat dikembalikan (no refund).",
   "Jaga kebersihan meja dan kelengkapan set mahjong. Kerusakan atau kehilangan menjadi tanggung jawab penyewa.",
-  "Dilarang berjudi, Penyewa membebaskan Manajemen Fu FU Mahjong dari segala tuntutan hukum akibat penyalah gunaan.",
-  "Mohon tidak membawa makanan dan minuman dari luar, kami menyediakan dengan harga terjangkau",
-  "Segala kehilangan tidak menjadi tanggung jawab pengelola",
+  "Dilarang membawa makanan/minuman dari luar; silakan pesan dari menu kafe.",
   "Mohon menjaga ketenangan dan kenyamanan bersama pengunjung lain.",
-  "Iqos diperbolehkan dengan syarat tidak mengganggu pengunjung lain, Merokok dan Vape dilarang.",
-  "Penyewa setuju dan memperbolehkan pengelola mengambil foto atau dokumentasi yang di anggap perlu dan tidak melanggar norma - normma.",
 ];
 
 // --- helpers ---------------------------------------------------------------
@@ -479,6 +476,52 @@ app.post("/api/fnb-orders", (req, res) => {
     bankName: BANK_NAME, bankAccount: BANK_ACCOUNT, bankHolder: BANK_HOLDER, expiresAt: result.expiresAt,
   });
   safeWA(b.phone, waFnbText(full));
+});
+
+// ---- Walk-in sessions (owner-only): start / stop / pay / list ----
+app.get("/api/sessions", (req, res) => {
+  if (!requireAdmin(req, res)) return;
+  res.json({ ok: true, sessions: listSessions(100) });
+});
+
+app.post("/api/sessions/start", (req, res) => {
+  if (!requireAdmin(req, res)) return;
+  const b = req.body || {};
+  if (!b.branchId || !b.table_name) return res.status(400).json({ ok: false, error: "cabang & meja wajib" });
+  const s = startSession(b);
+  console.log(`[walkin] START ${s.code} @ ${b.branch} · ${b.table_name} (rate ${rupiah(b.rate || 0)}/jam)`);
+  res.json({ ok: true, session: s });
+});
+
+app.post("/api/sessions/:code/end", (req, res) => {
+  if (!requireAdmin(req, res)) return;
+  const s = endSession(req.params.code);
+  if (!s) return res.json({ ok: false, error: "sesi tidak ditemukan / sudah ditutup" });
+  console.log(`[walkin] END ${s.code} — ${s.minutes} menit = ${s.blocks} blok x15m = ${rupiah(s.amount)}`);
+  // tell the customer their bill on WhatsApp (if we have a number)
+  if (s.phone) {
+    safeWA(s.phone, [
+      `*Tagihan Sesi Main — ${BUSINESS_NAME}*`,
+      `Kode: ${s.code}`,
+      `Meja: ${s.table_name}`,
+      `Durasi: ${s.minutes} menit (${s.blocks} x 15 menit)`,
+      `Total: *${rupiah(s.amount)}*`,
+      ``,
+      `Silakan bayar di kasir. Terima kasih! 🀄`,
+    ].join("\n"));
+  }
+  res.json({ ok: true, session: s });
+});
+
+app.post("/api/sessions/:code/pay", (req, res) => {
+  if (!requireAdmin(req, res)) return;
+  const s = paySession(req.params.code);
+  res.json({ ok: !!s, session: s || null });
+});
+
+app.post("/api/sessions/:code/cancel", (req, res) => {
+  if (!requireAdmin(req, res)) return;
+  res.json({ ok: cancelSession(req.params.code) });
 });
 
 app.get("/api/reservations", (req, res) => {

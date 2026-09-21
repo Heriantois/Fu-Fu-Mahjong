@@ -19,7 +19,7 @@ const { useState, useMemo, useEffect } = React;
 /* ============ EDIT ME: business, branches, tables, prices ============ */
 const BUSINESS = {
     name: "Fu Fu Mahjong & Cafe",
-    tagline: "Reservasi Meja Mahjong — pilih cabang, meja & jam",
+    tagline: "Reservasi meja mahjong — pilih cabang, meja & jam",
 };
 const LOGO = "/fufu-logo.png";
 const BRANCHES = [
@@ -80,26 +80,19 @@ const ADDONS = [
     { id: "gor6", cat: "Gorengan & Camilan", name: "Siomay Goreng Si Oma (4 pcs)", price: 30000, max: 20 },
     { id: "gor7", cat: "Gorengan & Camilan", name: "Pangsit Goreng Ayam Udang (3 pcs) + mayo", price: 20000, max: 20 },
     { id: "kue1", cat: "Kue", name: "Pia Oma Kacang Hijau (3 pcs)", price: 20000, max: 20 },
-    { id: "drink1", cat: "Minuman", name: "Es Teh Tawar", price: 7000, max: 30 },
-    { id: "drink2", cat: "Minuman", name: "Es Teh Solo", price: 15000, max: 30 },
-    { id: "drink3", cat: "Minuman", name: "Ice Lemon Tea", price: 20000, max: 30 },
-    { id: "drink4", cat: "Minuman", name: "Ice Lychee Tea", price: 23000, max: 30 },
-    { id: "drink5", cat: "Minuman", name: "Ice Kopi Susu", price: 18000, max: 30 },
-    { id: "drink6", cat: "Minuman", name: "Ice Matcha Latte", price: 22000, max: 30 },
-    { id: "drink7", cat: "Minuman", name: "Ice Cokelat Dankin", price: 23000, max: 30 },
-    { id: "Pitcher1", cat: "Pitcher", name: "Ice Tea Pitcher", price: 20000, max: 20 },
-    { id: "Pitcher2", cat: "Pitcher", name: "Sweet Ice Tea Pitcher", price: 28000, max: 20 },
-    { id: "Pitcher3", cat: "Pitcher", name: "Ice Lemon Tea Pitcher", price: 36000, max: 20 },
+    { id: "drink1", cat: "Minuman", name: "Kopi", price: 25000, max: 20 },
+    { id: "drink2", cat: "Minuman", name: "Air Mineral", price: 10000, max: 20 },
+    { id: "misc1", cat: "Lainnya", name: "Snack Platter", price: 75000, max: 10 },
 ];
 // Menu unggulan untuk carousel. img: URL foto atau "/img/namafile.jpg". "" = placeholder.
 const FEATURED = [
     { name: "Siomay Goreng Si Oma", price: 30000, img: "/img/Siomaygoreng.png" },
     { name: "Es Teh Tawar Pitcher", price: 20000, img: "/img/estehtawar.jpg" },
-    { name: "Bakso Goreng FuFu", price: 21000, img: "/img/baksogoreng.png" },
+    { name: "Bakso Goreng FuFu", price: 26000, img: "/img/baksogoreng.png" },
     { name: "Indomie Goreng", price: 8000, img: "/img/Indomiegoreng.png" },
 ];
 // GANTI dengan nomor WhatsApp kafe (WAJIB untuk pesan F&B & kirim bukti transfer).
-const BUSINESS_WHATSAPP = "087863374940";
+const BUSINESS_WHATSAPP = "08XX-XXXX-XXXX";
 const API_BASE = "";
 const STEPS = ["Cabang", "Jadwal", "Detail", "Konfirmasi"];
 /* ===================================================================== */
@@ -265,7 +258,7 @@ function App() {
     const [date, setDate] = useState("");
     const [slots, setSlots] = useState([]);
     const [addons, setAddons] = useState({});
-    const [form, setForm] = useState({ name: "", phone: "", email: "", notes: "" });
+    const [form, setForm] = useState({ name: "", phone: "", notes: "" });
     const [touched, setTouched] = useState(false);
     const [tab, setTab] = useState("info");
     const [booking, setBooking] = useState(null);
@@ -359,8 +352,6 @@ function App() {
             e.phone = "Nomor WhatsApp wajib diisi";
         else if (!/^(\+?62|0)8\d{7,12}$/.test(phone))
             e.phone = "Contoh: 0812xxxxxxx";
-        if (form.email.trim() && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.email.trim()))
-            e.email = "Format email tidak valid";
         return e;
     }, [form]);
     const set = (k) => (ev) => setForm((f) => ({ ...f, [k]: ev.target.value }));
@@ -467,7 +458,7 @@ function App() {
         setDate("");
         setSlots([]);
         setAddons({});
-        setForm({ name: "", phone: "", email: "", notes: "" });
+        setForm({ name: "", phone: "", notes: "" });
         setTouched(false);
         setBooking(null);
         setConflict([]);
@@ -709,20 +700,13 @@ function App() {
                                 React.createElement("div", { className: "rv-cname" }, f.name),
                                 React.createElement("div", { className: "rv-cprice" }, rupiah(f.price))))))),
                         React.createElement("div", { className: "rv-field" },
-                            React.createElement("label", { className: "rv-label" }, "Nama lengkap"),
+                            React.createElement("label", { className: "rv-label" }, "Nama"),
                             React.createElement("input", { className: `rv-input ${touched && errors.name ? "err" : ""}`, value: form.name, onChange: set("name"), placeholder: "Nama kamu" }),
                             touched && errors.name && React.createElement("div", { className: "rv-errmsg" }, errors.name)),
-                        React.createElement("div", { className: "rv-row2" },
-                            React.createElement("div", { className: "rv-field" },
-                                React.createElement("label", { className: "rv-label" }, "Nomor WhatsApp"),
-                                React.createElement("input", { className: `rv-input ${touched && errors.phone ? "err" : ""}`, value: form.phone, onChange: set("phone"), placeholder: "0812xxxxxxx", inputMode: "tel" }),
-                                touched && errors.phone && React.createElement("div", { className: "rv-errmsg" }, errors.phone)),
-                            React.createElement("div", { className: "rv-field" },
-                                React.createElement("label", { className: "rv-label" },
-                                    "Email ",
-                                    React.createElement("span", { className: "rv-opt" }, "(opsional)")),
-                                React.createElement("input", { className: `rv-input ${touched && errors.email ? "err" : ""}`, value: form.email, onChange: set("email"), placeholder: "email@contoh.com", inputMode: "email" }),
-                                touched && errors.email && React.createElement("div", { className: "rv-errmsg" }, errors.email))),
+                        React.createElement("div", { className: "rv-field" },
+                            React.createElement("label", { className: "rv-label" }, "Nomor WhatsApp"),
+                            React.createElement("input", { className: `rv-input ${touched && errors.phone ? "err" : ""}`, value: form.phone, onChange: set("phone"), placeholder: "0812xxxxxxx", inputMode: "tel" }),
+                            touched && errors.phone && React.createElement("div", { className: "rv-errmsg" }, errors.phone)),
                         React.createElement("div", { className: "rv-field" },
                             React.createElement("label", { className: "rv-label" },
                                 "Catatan ",
@@ -779,9 +763,6 @@ function App() {
                         React.createElement("div", { className: "rv-srow" },
                             React.createElement("span", { className: "rv-slabel" }, "WhatsApp"),
                             React.createElement("span", { className: "rv-sval" }, form.phone)),
-                        form.email && React.createElement("div", { className: "rv-srow" },
-                            React.createElement("span", { className: "rv-slabel" }, "Email"),
-                            React.createElement("span", { className: "rv-sval" }, form.email)),
                         form.notes && React.createElement("div", { className: "rv-srow" },
                             React.createElement("span", { className: "rv-slabel" }, "Catatan"),
                             React.createElement("span", { className: "rv-sval" }, form.notes)),

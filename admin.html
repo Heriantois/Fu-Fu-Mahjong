@@ -62,7 +62,30 @@
   <div id="dash" style="display:none;">
     <div class="pills" style="margin-bottom:14px;">
       <span class="pill on" id="vw-resv" onclick="showView('resv')">Reservasi</span>
+      <span class="pill" id="vw-walk" onclick="showView('walk')">Walk-in</span>
       <span class="pill" id="vw-mem" onclick="showView('mem')">Member</span>
+    </div>
+
+    <div id="walkView" style="display:none;">
+      <h1>Walk-in (Bayar di Akhir)</h1>
+      <div class="sub">Mulai sesi saat pelanggan datang, stop saat selesai. Dihitung per 15 menit (dibulatkan ke atas).</div>
+      <div class="qr-card" style="text-align:left;max-width:460px;margin-bottom:18px;">
+        <div style="font-weight:800;margin-bottom:10px;">Mulai sesi baru</div>
+        <label class="rvl">Cabang</label>
+        <select id="w-branch" class="min" onchange="wBranchChanged()"></select>
+        <label class="rvl">Meja</label>
+        <select id="w-table" class="min"></select>
+        <label class="rvl">Tarif / jam (Rp)</label>
+        <input id="w-rate" class="min" type="number" placeholder="mis. 50000" />
+        <label class="rvl">Nama <span style="font-weight:400;color:var(--muted)">(opsional)</span></label>
+        <input id="w-name" class="min" placeholder="Nama pelanggan" />
+        <label class="rvl">WhatsApp <span style="font-weight:400;color:var(--muted)">(opsional, untuk kirim tagihan)</span></label>
+        <input id="w-phone" class="min" placeholder="0812xxxxxxx" />
+        <button class="btn primary" style="width:100%" onclick="startWalk()">▶ Mulai sesi</button>
+        <div id="w-msg" class="sub" style="margin-top:10px;"></div>
+      </div>
+      <button class="btn ghost small" onclick="loadSessions()" style="margin-bottom:12px;">↻ Refresh</button>
+      <div id="walkWrap"></div>
     </div>
 
     <div id="resvView">
@@ -142,10 +165,119 @@
   function showView(v){
     document.getElementById("resvView").style.display = v==="resv"?"block":"none";
     document.getElementById("memView").style.display = v==="mem"?"block":"none";
+    document.getElementById("walkView").style.display = v==="walk"?"block":"none";
     document.getElementById("vw-resv").classList.toggle("on", v==="resv");
     document.getElementById("vw-mem").classList.toggle("on", v==="mem");
+    document.getElementById("vw-walk").classList.toggle("on", v==="walk");
     if(v==="mem") loadMembers();
+    if(v==="walk"){ initWalkForm(); loadSessions(); }
   }
+
+  // ---- Walk-in sessions ----
+  var WBRANCHES = [
+    { id:"gs", name:"Fu Fu Gading Serpong", tables:["Table 1","Table 2","Table 3","Table 4","Table 5","Table 6"], rate:50000 },
+    { id:"bsd", name:"Fu Fu BSD", tables:["Meja Reguler","VIP 1","VIP 2","VIP 3","VIP 4"], rate:75000 }
+  ];
+  var SESSIONS = [];
+  var walkTimer = null;
+
+  function initWalkForm(){
+    var bs = document.getElementById("w-branch");
+    if(bs.options.length) return;
+    WBRANCHES.forEach(function(b){ var o=document.createElement("option"); o.value=b.id; o.textContent=b.name; bs.appendChild(o); });
+    wBranchChanged();
+  }
+  function wBranchChanged(){
+    var id = document.getElementById("w-branch").value;
+    var b = WBRANCHES.find(function(x){return x.id===id;});
+    var ts = document.getElementById("w-table"); ts.innerHTML="";
+    if(!b) return;
+    b.tables.forEach(function(t){ var o=document.createElement("option"); o.value=t; o.textContent=t; ts.appendChild(o); });
+    document.getElementById("w-rate").value = b.rate;
+  }
+  async function startWalk(){
+    var bid = document.getElementById("w-branch").value;
+    var b = WBRANCHES.find(function(x){return x.id===bid;});
+    var payload = {
+      branchId: bid, branch: b?b.name:bid,
+      table_name: document.getElementById("w-table").value,
+      rate: Number(document.getElementById("w-rate").value)||0,
+      name: document.getElementById("w-name").value.trim(),
+      phone: document.getElementById("w-phone").value.trim()
+    };
+    var msg = document.getElementById("w-msg");
+    if(!payload.table_name || !payload.rate){ msg.textContent="Pilih meja dan isi tarif."; return; }
+    msg.textContent="Memulai…";
+    var r = await api("/api/sessions/start", {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
+    var j = await r.json();
+    if(j.ok){ msg.textContent="Sesi dimulai: "+j.session.code; document.getElementById("w-name").value=""; document.getElementById("w-phone").value=""; loadSessions(); }
+    else { msg.textContent="Gagal: "+(j.error||"coba lagi"); }
+  }
+  async function loadSessions(){
+    var r = await api("/api/sessions"); if(r.status===401){logout();return;}
+    var j = await r.json(); SESSIONS = j.sessions || [];
+    renderSessions();
+    if(walkTimer) clearInterval(walkTimer);
+    walkTimer = setInterval(renderSessions, 1000); // live timer
+  }
+  function elapsed(ms){
+    var sec = Math.max(0, Math.floor((Date.now()-ms)/1000));
+    var h = Math.floor(sec/3600), m = Math.floor((sec%3600)/60), ss = sec%60;
+    return (h?h+"j ":"")+m+"m "+String(ss).padStart(2,"0")+"s";
+  }
+  function liveAmount(s){
+    var mins = Math.max(1, Math.round((Date.now()-s.started_at)/60000));
+    var blocks = Math.ceil(mins/15);
+    return { mins: mins, blocks: blocks, amt: Math.round((s.rate/4)*blocks) };
+  }
+  function renderSessions(){
+    if(!SESSIONS.length){ document.getElementById("walkWrap").innerHTML='<div class="empty">Belum ada sesi walk-in.</div>'; return; }
+    var html='<table><thead><tr><th>Meja</th><th>Mulai</th><th>Durasi</th><th>Tagihan</th><th>Status</th><th>Aksi</th></tr></thead><tbody>';
+    SESSIONS.forEach(function(s){
+      var start = new Date(s.started_at).toLocaleTimeString("id-ID",{hour:"2-digit",minute:"2-digit"});
+      var dur, amt, badge, acts;
+      if(s.status==="open"){
+        var lv = liveAmount(s);
+        dur = elapsed(s.started_at)+'<br><span class="muted">'+lv.blocks+' x 15m</span>';
+        amt = rp(lv.amt)+'<br><span class="muted">berjalan</span>';
+        badge = '<span class="badge b-pending">Berjalan</span>';
+        acts = '<button class="btn primary small" onclick="endWalk(\''+s.code+'\')">■ Stop & hitung</button> '+
+               '<button class="btn danger small" onclick="cancelWalk(\''+s.code+'\')">Batal</button>';
+      } else {
+        dur = s.minutes+' menit<br><span class="muted">'+s.blocks+' x 15m</span>';
+        amt = '<b>'+rp(s.amount)+'</b>';
+        badge = s.status==="paid" ? '<span class="badge b-paid">Lunas</span>' : '<span class="badge b-expired">Selesai</span>';
+        acts = s.status==="closed" ? '<button class="btn primary small" onclick="payWalk(\''+s.code+'\')">Tandai Lunas</button>' : '<span class="muted">—</span>';
+      }
+      html += '<tr>'+
+        '<td data-l="Meja">'+s.table_name+'<br><span class="muted">'+s.branch_name+' · '+s.code+'</span></td>'+
+        '<td data-l="Mulai">'+start+'<br><span class="muted">'+rp(s.rate)+'/jam</span></td>'+
+        '<td data-l="Durasi">'+dur+'</td>'+
+        '<td data-l="Tagihan">'+amt+'</td>'+
+        '<td data-l="Status">'+badge+'</td>'+
+        '<td data-l="Aksi"><div class="acts">'+acts+'</div></td>'+
+      '</tr>';
+    });
+    html+='</tbody></table>';
+    document.getElementById("walkWrap").innerHTML = html;
+  }
+  async function endWalk(code){
+    if(!confirm("Stop sesi "+code+" dan hitung tagihan?")) return;
+    var r = await api("/api/sessions/"+code+"/end",{method:"POST"});
+    var j = await r.json();
+    if(j.ok){ alert("Durasi "+j.session.minutes+" menit ("+j.session.blocks+" x 15m)\nTotal: "+rp(j.session.amount)); }
+    loadSessions();
+  }
+  async function payWalk(code){
+    await api("/api/sessions/"+code+"/pay",{method:"POST"});
+    loadSessions();
+  }
+  async function cancelWalk(code){
+    if(!confirm("Batalkan sesi "+code+"?")) return;
+    await api("/api/sessions/"+code+"/cancel",{method:"POST"});
+    loadSessions();
+  }
+
   function setHours(h, tier){ document.getElementById("m-hours").value=h; document.getElementById("m-tier").value=tier; }
   async function topup(){
     var phone=document.getElementById("m-phone").value.trim();
