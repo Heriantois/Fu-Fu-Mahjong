@@ -15,11 +15,13 @@ import express from "express";
 import cors from "cors";
 import nodemailer from "nodemailer";
 import path from "node:path";
+import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 import {
   getBookedHours, createReservation, createFnbOrder, markPaid, markCancelled, listReservations, getByCode,
   getMember, listMembers, topUpMember,
   startSession, endSession, paySession, cancelSession, listSessions,
+  addSessionItems, getOpenSession, getSessionByCode, getSessionItems,
 } from "./db.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -478,6 +480,62 @@ app.post("/api/fnb-orders", (req, res) => {
   safeWA(b.phone, waFnbText(full));
 });
 
+// Public: the shared F&B menu (single source of truth = menu.json).
+// Both the website and the admin page read this, so prices only need editing in one file.
+app.get("/api/menu", (_req, res) => {
+  try {
+    const raw = fs.readFileSync(path.join(__dirname, "menu.json"), "utf8");
+    const m = JSON.parse(raw);
+    res.json({ ok: true, addons: m.addons || [], featured: m.featured || [] });
+  } catch (err) {
+    console.error("[menu] gagal baca menu.json:", err.message);
+    res.status(500).json({ ok: false, error: "menu tidak bisa dibaca", addons: [], featured: [] });
+  }
+});
+
+// Public: does this table have an open walk-in bill? (for QR F&B "add to bill")
+app.get("/api/open-session", (req, res) => {
+  const { branch, table } = req.query;
+  if (!branch || !table) return res.status(400).json({ ok: false, error: "branch & table wajib" });
+  const s = getOpenSession(branch, table);
+  if (!s) return res.json({ ok: true, open: false });
+  res.json({ ok: true, open: true, code: s.code, table: s.table_name, startedAt: s.started_at });
+});
+
+// Public: add F&B to an open bill (customer at the table, via QR)
+app.post("/api/open-session/add", (req, res) => {
+  const b = req.body || {};
+  if (!b.branchId || !b.table_no || !Array.isArray(b.addons) || !b.addons.length) {
+    return res.status(400).json({ ok: false, error: "data kurang" });
+  }
+  const open = getOpenSession(b.branchId, b.table_no);
+  if (!open) return res.status(409).json({ ok: false, error: "no_open_session" });
+  const updated = addSessionItems(open.code, b.addons, "qr");
+  const itemsTotal = (updated.items || []).reduce((t, i) => t + i.qty * i.price, 0);
+  console.log(`[openbill] ${open.code} + ${b.addons.length} item (QR) · meja ${b.table_no} · F&B total ${rupiah(itemsTotal)}`);
+  res.json({ ok: true, code: open.code, table: open.table_name, itemsTotal });
+  if (open.phone) {
+    safeWA(open.phone, [
+      `*Pesanan ditambahkan ke bill* 🀄`,
+      `Meja: ${open.table_name} (${open.code})`,
+      ``,
+      ...b.addons.map((a) => `- ${a.name} x${a.qty}`),
+      ``,
+      `Subtotal F&B sekarang: ${rupiah(itemsTotal)}`,
+      `Dibayar di akhir sesi bersama sewa meja.`,
+    ].join("\n"));
+  }
+});
+
+// Owner: add F&B to an open bill from the admin
+app.post("/api/sessions/:code/items", (req, res) => {
+  if (!requireAdmin(req, res)) return;
+  const items = (req.body || {}).addons || [];
+  const out = addSessionItems(req.params.code, items, "admin");
+  if (!out) return res.json({ ok: false, error: "sesi tidak ditemukan / sudah ditutup" });
+  res.json({ ok: true, session: out });
+});
+
 // ---- Walk-in sessions (owner-only): start / stop / pay / list ----
 app.get("/api/sessions", (req, res) => {
   if (!requireAdmin(req, res)) return;
@@ -497,15 +555,19 @@ app.post("/api/sessions/:code/end", (req, res) => {
   if (!requireAdmin(req, res)) return;
   const s = endSession(req.params.code);
   if (!s) return res.json({ ok: false, error: "sesi tidak ditemukan / sudah ditutup" });
-  console.log(`[walkin] END ${s.code} — ${s.minutes} menit = ${s.blocks} blok x15m = ${rupiah(s.amount)}`);
+  console.log(`[walkin] END ${s.code} — meja ${rupiah(s.tableAmount)} + F&B ${rupiah(s.itemsAmount)} = ${rupiah(s.amount)}`);
   // tell the customer their bill on WhatsApp (if we have a number)
   if (s.phone) {
+    const itemLines = (s.items || []).map((i) => `- ${i.name} x${i.qty} = ${rupiah(i.qty * i.price)}`);
     safeWA(s.phone, [
       `*Tagihan Sesi Main — ${BUSINESS_NAME}*`,
       `Kode: ${s.code}`,
       `Meja: ${s.table_name}`,
-      `Durasi: ${s.minutes} menit (${s.blocks} x 15 menit)`,
-      `Total: *${rupiah(s.amount)}*`,
+      ``,
+      `Sewa meja: ${s.minutes} menit (${s.blocks} x 15 menit) = ${rupiah(s.tableAmount)}`,
+      ...(itemLines.length ? [``, `Makanan & minuman:`, ...itemLines, `Subtotal F&B: ${rupiah(s.itemsAmount)}`] : []),
+      ``,
+      `*TOTAL: ${rupiah(s.amount)}*`,
       ``,
       `Silakan bayar di kasir. Terima kasih! 🀄`,
     ].join("\n"));

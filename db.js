@@ -68,6 +68,13 @@ db.exec(`
     status TEXT NOT NULL DEFAULT 'open',   -- open | closed | paid
     notes TEXT
   );
+  CREATE TABLE IF NOT EXISTS session_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_code TEXT NOT NULL,
+    name TEXT, qty INTEGER, price INTEGER,
+    source TEXT, at INTEGER
+  );
+  CREATE INDEX IF NOT EXISTS idx_sitems ON session_items (session_code);
 `);
 
 // Safe migrations for databases created by an older version.
@@ -249,17 +256,53 @@ export function startSession(b) {
   return db.prepare(`SELECT * FROM sessions WHERE code=?`).get(code);
 }
 
-// Close a session: compute minutes, 15-min blocks (rounded up), and amount.
+// Close a session: table time (per 15-min block, rounded up) + F&B items on the bill.
 export function endSession(code) {
   const s = db.prepare(`SELECT * FROM sessions WHERE code=? AND status='open'`).get(code);
   if (!s) return null;
   const now = Date.now();
   const minutes = Math.max(1, Math.round((now - s.started_at) / 60000));
-  const blocks = Math.ceil(minutes / 15);                 // per 15-minute block, rounded up
-  const amount = Math.round((s.rate / 4) * blocks);        // rate is per hour = 4 blocks
+  const blocks = Math.ceil(minutes / 15);                  // 15-minute blocks, rounded up
+  const tableAmount = Math.round((s.rate / 4) * blocks);   // rate is per hour = 4 blocks
+  const itemsAmount = getSessionItems(code).reduce((t, i) => t + i.qty * i.price, 0);
+  const amount = tableAmount + itemsAmount;
   db.prepare(`UPDATE sessions SET ended_at=?, minutes=?, blocks=?, amount=?, status='closed' WHERE id=?`)
     .run(now, minutes, blocks, amount, s.id);
-  return db.prepare(`SELECT * FROM sessions WHERE id=?`).get(s.id);
+  const out = db.prepare(`SELECT * FROM sessions WHERE id=?`).get(s.id);
+  out.tableAmount = tableAmount;
+  out.itemsAmount = itemsAmount;
+  out.items = getSessionItems(code);
+  return out;
+}
+
+// ---- Open bill: F&B items attached to a walk-in session ----
+export function getSessionItems(code) {
+  return db.prepare(`SELECT name, qty, price, source, at FROM session_items WHERE session_code=? ORDER BY id`).all(code);
+}
+export function getOpenSession(branchId, tableName) {
+  return db.prepare(`SELECT * FROM sessions WHERE branch_id=? AND table_name=? AND status='open' ORDER BY id DESC LIMIT 1`)
+    .get(branchId, tableName) || null;
+}
+export function getSessionByCode(code) {
+  const s = db.prepare(`SELECT * FROM sessions WHERE code=?`).get(code);
+  if (!s) return null;
+  s.items = getSessionItems(code);
+  return s;
+}
+// Add F&B items to an OPEN session. source: 'admin' | 'qr'
+export function addSessionItems(code, items, source) {
+  const s = db.prepare(`SELECT * FROM sessions WHERE code=? AND status='open'`).get(code);
+  if (!s) return null;
+  const now = Date.now();
+  const ins = db.prepare(`INSERT INTO session_items (session_code,name,qty,price,source,at) VALUES (?,?,?,?,?,?)`);
+  const tx = db.transaction(() => {
+    for (const it of items || []) {
+      if (!it.name || !it.qty) continue;
+      ins.run(code, it.name, Number(it.qty), Number(it.price) || 0, source || "admin", now);
+    }
+  });
+  tx();
+  return getSessionByCode(code);
 }
 
 export function paySession(code) {
@@ -274,7 +317,11 @@ export function cancelSession(code) {
 }
 
 export function listSessions(limit = 100) {
-  return db.prepare(`SELECT * FROM sessions ORDER BY id DESC LIMIT ?`).all(limit);
+  const rows = db.prepare(`SELECT * FROM sessions ORDER BY id DESC LIMIT ?`).all(limit);
+  return rows.map((r) => {
+    const items = getSessionItems(r.code);
+    return { ...r, items, itemsAmount: items.reduce((t, i) => t + i.qty * i.price, 0) };
+  });
 }
 
 export function markPaid(code) {

@@ -64,41 +64,11 @@ function slotPriceFor(branch, table, iso) {
     return 50000;
 }
 function freeIceTea(branch, iso, hour) {
-    return false;
+    return false; // ganti ke: branch.id === "gs" && !isGSWeekend(iso) && hour < 15;  untuk aktifkan promo
 }
 // Menu F&B. Harga TANPA koma/titik (8000, bukan 8,000). "id" harus UNIK. "cat" = kategori.
-const ADDONS = [
-    { id: "mie1", cat: "Indomie", name: "Indomie Goreng", price: 8000, max: 20 },
-    { id: "mie2", cat: "Indomie", name: "Indomie Goreng + Telur", price: 12000, max: 20 },
-    { id: "mie3", cat: "Indomie", name: "Indomie Rebus", price: 8000, max: 20 },
-    { id: "mie4", cat: "Indomie", name: "Indomie Rebus + Telur", price: 12000, max: 20 },
-    { id: "gor1", cat: "Gorengan & Camilan", name: "Singkong Goreng", price: 21000, max: 20 },
-    { id: "gor2", cat: "Gorengan & Camilan", name: "Bakso Goreng Fufu (Ayam Udang)", price: 26000, max: 20 },
-    { id: "gor3", cat: "Gorengan & Camilan", name: "Cakwe Goreng Ayam Udang", price: 24000, max: 20 },
-    { id: "gor4", cat: "Gorengan & Camilan", name: "Pisang Goreng Wijen", price: 21000, max: 20 },
-    { id: "gor5", cat: "Gorengan & Camilan", name: "Mini Wonton XXI wannabe", price: 22000, max: 20 },
-    { id: "gor6", cat: "Gorengan & Camilan", name: "Siomay Goreng Si Oma (4 pcs)", price: 30000, max: 20 },
-    { id: "gor7", cat: "Gorengan & Camilan", name: "Pangsit Goreng Ayam Udang (3 pcs) + mayo", price: 20000, max: 20 },
-    { id: "kue1", cat: "Kue", name: "Pia Oma Kacang Hijau (3 pcs)", price: 20000, max: 20 },
-    { id: "drink1", cat: "Minuman", name: "Es Teh Tawar", price: 7000, max: 50 },
-    { id: "drink2", cat: "Minuman", name: "Es Teh Solo", price: 15000, max: 50 },
-    { id: "drink3", cat: "Minuman", name: "Ice Lemon Tea", price: 20000, max: 50 },
-    { id: "drink4", cat: "Minuman", name: "Ice Lychee Tea", price: 23000, max: 50 },
-    { id: "drink5", cat: "Minuman", name: "Ice Kopi Susu", price: 18000, max: 50 },
-    { id: "drink6", cat: "Minuman", name: "Ice Matcha Latte", price: 22000, max: 50 },
-    { id: "drink7", cat: "Minuman", name: "Ice Cokelat Dankin", price: 23000, max: 50 },
-    { id: "drink8", cat: "Minuman", name: "Air Mineral", price: 8000, max: 50 },
-    { id: "Picther1", cat: "Pitcher", name: "Ice Tea Picther - Plain", price: 20000, max: 50 },
-    { id: "Picther2", cat: "Pitcher", name: "Sweet Ice Tea Pitcher", price: 28000, max: 50 },
-    { id: "Picther3", cat: "Pitcher", name: "Ice Lemon Tea Picther", price: 36000, max: 50 },
-];
-// Menu unggulan untuk carousel. img: URL foto atau "/img/namafile.jpg". "" = placeholder.
-const FEATURED = [
-    { name: "Siomay Goreng Si Oma", price: 30000, img: "/img/Siomaygoreng.png" },
-    { name: "Es Teh Tawar Pitcher", price: 20000, img: "/img/estehtawar.jpg" },
-    { name: "Bakso Goreng FuFu", price: 26000, img: "/img/baksogoreng.png" },
-    { name: "Indomie Goreng", price: 8000, img: "/img/Indomiegoreng.png" },
-];
+// MENU F&B: tidak lagi ditulis di sini.
+// Satu-satunya tempat edit menu = file "menu.json" (dibaca oleh website DAN halaman admin).
 // GANTI dengan nomor WhatsApp kafe (WAJIB untuk pesan F&B & kirim bukti transfer).
 const BUSINESS_WHATSAPP = "08XX-XXXX-XXXX";
 const API_BASE = "";
@@ -120,10 +90,10 @@ function mmss(sec) {
     const m = Math.floor(sec / 60), s = sec % 60;
     return `${m}:${String(s).padStart(2, "0")}`;
 }
-// group ADDONS by category, preserving order
-function groupedAddons() {
+// group menu items by category, preserving order
+function groupedAddons(list) {
     const cats = [], map = {};
-    ADDONS.forEach((a) => { const c = a.cat || "Menu"; if (!map[c]) {
+    (list || []).forEach((a) => { const c = a.cat || "Menu"; if (!map[c]) {
         map[c] = [];
         cats.push(c);
     } map[c].push(a); });
@@ -259,6 +229,23 @@ function App() {
     const validQBranch = qBranchRaw && BRANCHES.some((b) => b.id === qBranchRaw) ? qBranchRaw : null;
     const qTable = params.get("table") || "";
     const [mode, setMode] = useState(params.get("mode") === "fnb" ? "fnb" : "reserve");
+    // Menu loaded from the server (menu.json) — single source of truth.
+    const [ADDONS, setMenu] = useState([]);
+    const [FEATURED, setFeatured] = useState([]);
+    const [menuLoaded, setMenuLoaded] = useState(false);
+    useEffect(() => {
+        let cancelled = false;
+        fetch(`${API_BASE}/api/menu`)
+            .then((r) => r.json())
+            .then((d) => { if (!cancelled) {
+            setMenu(d.addons || []);
+            setFeatured(d.featured || []);
+            setMenuLoaded(true);
+        } })
+            .catch(() => { if (!cancelled)
+            setMenuLoaded(true); });
+        return () => { cancelled = true; };
+    }, []);
     // reservation state
     const [step, setStep] = useState(0);
     const [branchId, setBranchId] = useState(null);
@@ -292,6 +279,8 @@ function App() {
     const [fnbError, setFnbError] = useState("");
     const [fnbRemaining, setFnbRemaining] = useState(0);
     const [fnbCopied, setFnbCopied] = useState(false);
+    const [openBill, setOpenBill] = useState(null); // {open:true, code, table} if this table has a running session
+    const [billAdded, setBillAdded] = useState(null); // result after adding to bill
     const branch = BRANCHES.find((b) => b.id === branchId) || null;
     const table = branch ? branch.tables.find((t) => t.id === tableId) || null : null;
     const isToday = date === todayISO();
@@ -343,6 +332,21 @@ function App() {
         const id = setInterval(tick, 1000);
         return () => clearInterval(id);
     }, [step, booking]);
+    // Does this table have a running walk-in session? (open bill)
+    useEffect(() => {
+        if (!fnbBranchId || !fnbTable.trim()) {
+            setOpenBill(null);
+            return;
+        }
+        let cancelled = false;
+        fetch(`${API_BASE}/api/open-session?branch=${encodeURIComponent(fnbBranchId)}&table=${encodeURIComponent(fnbTable.trim())}`)
+            .then((r) => r.json())
+            .then((d) => { if (!cancelled)
+            setOpenBill(d && d.open ? d : null); })
+            .catch(() => { if (!cancelled)
+            setOpenBill(null); });
+        return () => { cancelled = true; };
+    }, [fnbBranchId, fnbTable]);
     useEffect(() => {
         if (!fnbBooking || !fnbBooking.expiresAt)
             return;
@@ -500,6 +504,34 @@ function App() {
             setFnbError("Tidak bisa terhubung ke server. Coba lagi.");
         }
     }
+    async function addToOpenBill() {
+        const items = ADDONS.filter((a) => food[a.id]).map((a) => ({ name: a.name, qty: food[a.id], price: a.price }));
+        setFnbSubmitting(true);
+        setFnbError("");
+        try {
+            const res = await fetch(`${API_BASE}/api/open-session/add`, {
+                method: "POST", headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ branchId: fnbBranch.id, table_no: fnbTable.trim(), addons: items }),
+            });
+            const d = await res.json().catch(() => ({}));
+            setFnbSubmitting(false);
+            if (res.ok && d.ok) {
+                setBillAdded(d);
+                setFood({});
+                return;
+            }
+            if (d.error === "no_open_session") {
+                setFnbError("Meja ini belum punya sesi berjalan. Minta staf membuka sesi, atau bayar sekarang.");
+                setOpenBill(null);
+                return;
+            }
+            setFnbError("Gagal menambahkan ke bill. Coba lagi.");
+        }
+        catch (e) {
+            setFnbSubmitting(false);
+            setFnbError("Tidak bisa terhubung ke server. Coba lagi.");
+        }
+    }
     function fnbCopyAmount() {
         if (!fnbBooking)
             return;
@@ -507,7 +539,7 @@ function App() {
         setFnbCopied(true);
         setTimeout(() => setFnbCopied(false), 1500);
     }
-    function fnbResetOrder() { setFnbBooking(null); setFood({}); setFnbName(""); setFnbPhone(""); setFnbError(""); }
+    function fnbResetOrder() { setFnbBooking(null); setFood({}); setFnbName(""); setFnbPhone(""); setFnbError(""); setBillAdded(null); }
     const expired = step === 4 && booking && booking.expiresAt && remaining <= 0;
     // ---- QR SHEET (printable) ----
     if (qrMode) {
@@ -546,14 +578,15 @@ function App() {
             mode === "fnb" && (React.createElement("div", { className: "rv-card" },
                 React.createElement("h2", { className: "rv-h" }, "Pesan Makanan & Minuman"),
                 React.createElement("p", { className: "rv-sub" }, "Sudah di tempat? Pilih menu, isi nomor meja, lalu bayar via transfer. Pesanan disiapkan setelah pembayaran dikonfirmasi."),
-                !fnbBooking && !validQBranch && (React.createElement("div", { className: "rv-field" },
+                !fnbBooking && !billAdded && !validQBranch && (React.createElement("div", { className: "rv-field" },
                     React.createElement("label", { className: "rv-label" }, "Cabang"),
                     React.createElement("div", { className: "rv-pills" }, BRANCHES.map((b) => (React.createElement("button", { key: b.id, className: `rv-pill ${fnbBranchId === b.id ? "sel" : ""}`, onClick: () => setFnbBranchId(b.id) }, b.name)))))),
-                !fnbBooking && validQBranch && fnbBranch && (React.createElement("p", { className: "rv-sub", style: { marginTop: -6 } },
+                !fnbBooking && !billAdded && validQBranch && fnbBranch && (React.createElement("p", { className: "rv-sub", style: { marginTop: -6 } },
                     "Cabang: ",
                     React.createElement("b", null, fnbBranch.name))),
-                !fnbBooking && fnbBranch && (React.createElement("div", null,
-                    groupedAddons().map((g, gi) => (React.createElement("div", { key: g.cat },
+                !fnbBooking && !billAdded && fnbBranch && !menuLoaded && (React.createElement("div", { className: "rv-loading" }, "Memuat menu\u2026")),
+                !fnbBooking && !billAdded && fnbBranch && menuLoaded && (React.createElement("div", null,
+                    groupedAddons(ADDONS).map((g, gi) => (React.createElement("div", { key: g.cat },
                         React.createElement("div", { className: `rv-cat ${gi === 0 ? "first" : ""}` }, g.cat),
                         g.items.map((a) => (React.createElement("div", { key: a.id, className: "rv-addon" },
                             React.createElement("div", null,
@@ -581,9 +614,37 @@ function App() {
                             foodCount,
                             " item"),
                         React.createElement("span", { className: "v" }, rupiah(foodTotal)))),
+                    openBill && (React.createElement("div", { className: "rv-note", style: { marginTop: 14 } },
+                        React.createElement("span", null, "\uD83C\uDC04"),
+                        React.createElement("span", null,
+                            "Meja ini sedang punya ",
+                            React.createElement("b", null, "sesi berjalan"),
+                            " (bill ",
+                            openBill.code,
+                            "). Kamu bisa masukkan pesanan ke bill dan bayar semuanya di akhir."))),
                     fnbError && React.createElement("div", { className: "rv-conflict", style: { marginTop: 14, marginBottom: 0 } }, fnbError),
+                    React.createElement("div", { className: "rv-nav", style: { flexDirection: "column", gap: 8 } },
+                        openBill && (React.createElement("button", { className: "rv-btn primary", style: { width: "100%" }, onClick: addToOpenBill, disabled: fnbSubmitting || foodCount === 0 }, fnbSubmitting ? "Memproses…" : `Tambah ke bill meja · ${rupiah(foodTotal)}`)),
+                        React.createElement("button", { className: `rv-btn ${openBill ? "ghost" : "primary"}`, style: { width: "100%" }, onClick: submitFnbOrder, disabled: fnbSubmitting || foodCount === 0 || !fnbTable.trim() || !fnbPhone.trim() }, fnbSubmitting ? "Memproses…" : `Bayar sekarang ${rupiah(foodTotal)}`)))),
+                billAdded && (React.createElement("div", { className: "rv-center" },
+                    React.createElement("div", { className: "rv-check" },
+                        React.createElement("svg", { width: "26", height: "26", viewBox: "0 0 24 24", fill: "none", strokeWidth: "3", strokeLinecap: "round", strokeLinejoin: "round" },
+                            React.createElement("path", { d: "M20 6 9 17l-5-5" }))),
+                    React.createElement("h2", { className: "rv-h" }, "Pesanan masuk ke bill meja"),
+                    React.createElement("p", { className: "rv-sub" },
+                        "Meja ",
+                        React.createElement("b", null, billAdded.table),
+                        " \u00B7 bill ",
+                        React.createElement("b", null, billAdded.code)),
+                    React.createElement("div", { className: "rv-va", style: { background: "#146c54" } },
+                        React.createElement("div", { className: "rv-va-label" }, "Subtotal F&B di bill"),
+                        React.createElement("div", { className: "rv-va-amt", style: { color: "#fff" } }, rupiah(billAdded.itemsTotal)),
+                        React.createElement("div", { className: "rv-va-note" }, "Dibayar di akhir sesi bersama sewa meja")),
+                    React.createElement("div", { className: "rv-note" },
+                        React.createElement("span", null, "\uD83C\uDC04"),
+                        React.createElement("span", null, "Pesanan sedang disiapkan. Semua tagihan (sewa meja + F&B) dibayar di kasir saat sesi selesai.")),
                     React.createElement("div", { className: "rv-nav" },
-                        React.createElement("button", { className: "rv-btn primary", onClick: submitFnbOrder, disabled: fnbSubmitting || foodCount === 0 || !fnbTable.trim() || !fnbPhone.trim() }, fnbSubmitting ? "Memproses…" : `Bayar ${rupiah(foodTotal)}`)))),
+                        React.createElement("button", { className: "rv-btn ghost", onClick: () => setBillAdded(null), style: { flex: 1 } }, "Pesan lagi")))),
                 fnbBooking && (React.createElement("div", { className: "rv-center" },
                     React.createElement("div", { className: "rv-check" },
                         React.createElement("svg", { width: "26", height: "26", viewBox: "0 0 24 24", fill: "none", strokeWidth: "3", strokeLinecap: "round", strokeLinejoin: "round" },
@@ -721,7 +782,7 @@ function App() {
                                 React.createElement("span", { className: "rv-opt" }, "(opsional)")),
                             React.createElement("input", { className: "rv-input", value: form.notes, onChange: set("notes"), placeholder: "Permintaan khusus\u2026" })))),
                     tab === "menu" && (React.createElement("div", null,
-                        groupedAddons().map((g, gi) => (React.createElement("div", { key: g.cat },
+                        groupedAddons(ADDONS).map((g, gi) => (React.createElement("div", { key: g.cat },
                             React.createElement("div", { className: `rv-cat ${gi === 0 ? "first" : ""}` }, g.cat),
                             g.items.map((a) => (React.createElement("div", { key: a.id, className: "rv-addon" },
                                 React.createElement("div", null,

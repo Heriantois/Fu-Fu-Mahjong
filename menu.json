@@ -1,0 +1,44 @@
+{
+  "_help": [
+    "SATU-SATUNYA tempat untuk mengubah menu F&B. Website (index) DAN halaman admin membaca file ini.",
+    "Aturan: price TANPA koma/titik (8000, bukan 8,000). 'id' harus UNIK. 'cat' = nama kategori.",
+    "'max' = jumlah maksimal yang bisa dipesan per item.",
+    "'featured' = menu unggulan untuk carousel. 'img' boleh URL atau '/img/namafile.jpg' (kosong = placeholder).",
+    "Setelah edit: Commit di GitHub -> Render redeploy -> selesai. Tidak perlu ubah file lain."
+  ],
+  "addons": [
+    { "id": "mie1", "cat": "Indomie", "name": "Indomie Goreng", "price": 8000, "max": 20 },
+    { "id": "mie2", "cat": "Indomie", "name": "Indomie Goreng + Telur", "price": 12000, "max": 20 },
+    { "id": "mie3", "cat": "Indomie", "name": "Indomie Rebus", "price": 8000, "max": 20 },
+    { "id": "mie4", "cat": "Indomie", "name": "Indomie Rebus + Telur", "price": 12000, "max": 20 },
+
+    { "id": "gor1", "cat": "Gorengan & Camilan", "name": "Singkong Goreng", "price": 21000, "max": 20 },
+    { "id": "gor2", "cat": "Gorengan & Camilan", "name": "Bakso Goreng Fufu (Ayam Udang)", "price": 26000, "max": 20 },
+    { "id": "gor3", "cat": "Gorengan & Camilan", "name": "Cakwe Goreng Ayam Udang", "price": 24000, "max": 20 },
+    { "id": "gor4", "cat": "Gorengan & Camilan", "name": "Pisang Goreng Wijen", "price": 21000, "max": 20 },
+    { "id": "gor5", "cat": "Gorengan & Camilan", "name": "Mini Wonton XXI wannabe", "price": 22000, "max": 20 },
+    { "id": "gor6", "cat": "Gorengan & Camilan", "name": "Siomay Goreng Si Oma (4 pcs)", "price": 30000, "max": 20 },
+    { "id": "gor7", "cat": "Gorengan & Camilan", "name": "Pangsit Goreng Ayam Udang (3 pcs) + mayo", "price": 20000, "max": 20 },
+
+    { "id": "kue1", "cat": "Kue", "name": "Pia Oma Kacang Hijau (3 pcs)", "price": 20000, "max": 20 },
+
+    { "id": "drink1", "cat": "Minuman", "name": "Es Teh Tawar", "price": 7000, "max": 50 },
+    { "id": "drink2", "cat": "Minuman", "name": "Es Teh Solo", "price": 15000, "max": 50 },
+    { "id": "drink3", "cat": "Minuman", "name": "Ice Lemon Tea", "price": 20000, "max": 50 },
+    { "id": "drink4", "cat": "Minuman", "name": "Ice Lychee Tea", "price": 23000, "max": 50 },
+    { "id": "drink5", "cat": "Minuman", "name": "Ice Kopi Susu", "price": 18000, "max": 50 },
+    { "id": "drink6", "cat": "Minuman", "name": "Ice Matcha Latte", "price": 22000, "max": 50 },
+    { "id": "drink7", "cat": "Minuman", "name": "Ice Cokelat Dankin", "price": 23000, "max": 50 },
+    { "id": "drink8", "cat": "Minuman", "name": "Air Mineral", "price": 8000, "max": 50 },
+
+    { "id": "Picther1", "cat": "Pitcher", "name": "Ice Tea Picther - Plain", "price": 20000, "max": 50 },
+    { "id": "Picther2", "cat": "Pitcher", "name": "Sweet Ice Tea Pitcher", "price": 28000, "max": 50 },
+    { "id": "Picther3", "cat": "Pitcher", "name": "Ice Lemon Tea Picther", "price": 36000, "max": 50 }
+  ],
+  "featured": [
+    { "name": "Siomay Goreng Si Oma", "price": 30000, "img": "/img/Siomaygoreng.png" },
+    { "name": "Es Teh Tawar Pitcher", "price": 20000, "img": "/img/estehtawar.jpg" },
+    { "name": "Bakso Goreng FuFu", "price": 26000, "img": "/img/baksogoreng.png" },
+    { "name": "Indomie Goreng", "price": 8000, "img": "/img/Indomiegoreng.png" }
+  ]
+}

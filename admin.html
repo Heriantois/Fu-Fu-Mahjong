@@ -47,6 +47,7 @@
     td{border:none;padding:6px 12px;} td::before{content:attr(data-l);color:var(--muted);font-size:11px;display:block;font-weight:700;text-transform:uppercase;} }
 .min{width:100%;box-sizing:border-box;font:inherit;font-size:14px;padding:9px 11px;border:1px solid var(--line);border-radius:9px;margin-bottom:8px;}
 .rvl{display:block;font-size:12px;font-weight:600;margin-bottom:4px;}
+.rowitem{display:flex;align-items:center;justify-content:space-between;border:1px solid var(--line);border-radius:9px;padding:8px 11px;margin-bottom:6px;}
 </style>
 </head>
 <body>
@@ -85,6 +86,7 @@
         <div id="w-msg" class="sub" style="margin-top:10px;"></div>
       </div>
       <button class="btn ghost small" onclick="loadSessions()" style="margin-bottom:12px;">↻ Refresh</button>
+      <div id="addItemsBox" class="qr-card" style="display:none;text-align:left;max-width:520px;margin-bottom:18px;"></div>
       <div id="walkWrap"></div>
     </div>
 
@@ -170,7 +172,72 @@
     document.getElementById("vw-mem").classList.toggle("on", v==="mem");
     document.getElementById("vw-walk").classList.toggle("on", v==="walk");
     if(v==="mem") loadMembers();
-    if(v==="walk"){ initWalkForm(); loadSessions(); }
+    if(v==="walk"){ initWalkForm(); loadMenu(); loadSessions(); }
+  }
+
+
+  // F&B menu is loaded from the server (menu.json) — the SAME source the website uses.
+  // Edit prices/items only in menu.json; this page updates automatically.
+  var WMENU = [];
+  async function loadMenu(){
+    try{
+      var r = await fetch("/api/menu");
+      var j = await r.json();
+      var cats = [], map = {};
+      (j.addons||[]).forEach(function(a){
+        var c = a.cat || "Menu";
+        if(!map[c]){ map[c]=[]; cats.push(c); }
+        map[c].push([a.name, a.price]);
+      });
+      WMENU = cats.map(function(c){ return { cat:c, items:map[c] }; });
+    }catch(e){ WMENU = []; }
+  }
+
+  var ADDTO = null;   // session code we are adding items to
+  var CART = {};      // name -> {qty, price}
+
+  async function openAddItems(code){
+    ADDTO = code; CART = {};
+    if(!WMENU.length) await loadMenu();
+    if(!WMENU.length){ alert("Menu belum bisa dimuat. Coba refresh halaman."); return; }
+    var html = '<div style="font-weight:800;margin-bottom:8px;">Tambah F&B ke bill '+code+'</div>';
+    WMENU.forEach(function(g){
+      html += '<div style="font-size:11.5px;font-weight:800;color:var(--brand);text-transform:uppercase;margin:12px 0 6px;">'+g.cat+'</div>';
+      g.items.forEach(function(it){
+        var key = it[0].replace(/'/g,"");
+        html += '<div class="rowitem"><div><div style="font-size:13.5px;font-weight:600;">'+it[0]+'</div><div style="font-size:11.5px;color:var(--muted);">'+rp(it[1])+'</div></div>'+
+          '<div style="display:flex;align-items:center;gap:8px;">'+
+          '<button class="btn ghost small" onclick="cartBump(\''+key+'\','+it[1]+',-1)">−</button>'+
+          '<span id="q-'+key.replace(/[^A-Za-z0-9]/g,"")+'" style="min-width:14px;text-align:center;font-weight:700;">0</span>'+
+          '<button class="btn ghost small" onclick="cartBump(\''+key+'\','+it[1]+',1)">+</button>'+
+          '</div></div>';
+      });
+    });
+    html += '<div id="cartTotal" class="sub" style="margin-top:12px;"></div>'+
+            '<div style="display:flex;gap:8px;margin-top:8px;">'+
+            '<button class="btn primary" style="flex:1" onclick="saveItems()">Simpan ke bill</button>'+
+            '<button class="btn ghost" onclick="closeAddItems()">Tutup</button></div>';
+    document.getElementById("addItemsBox").innerHTML = html;
+    document.getElementById("addItemsBox").style.display = "block";
+    window.scrollTo(0,0);
+  }
+  function closeAddItems(){ ADDTO=null; CART={}; document.getElementById("addItemsBox").style.display="none"; }
+  function cartBump(name, price, d){
+    var cur = CART[name] ? CART[name].qty : 0;
+    var q = Math.max(0, cur + d);
+    if(q===0) delete CART[name]; else CART[name]={qty:q, price:price};
+    var id = "q-"+name.replace(/[^A-Za-z0-9]/g,"");
+    var el = document.getElementById(id); if(el) el.textContent = q;
+    var tot = Object.keys(CART).reduce(function(t,k){ return t + CART[k].qty*CART[k].price; },0);
+    document.getElementById("cartTotal").textContent = tot ? ("Subtotal: "+rp(tot)) : "";
+  }
+  async function saveItems(){
+    var items = Object.keys(CART).map(function(k){ return {name:k, qty:CART[k].qty, price:CART[k].price}; });
+    if(!items.length){ closeAddItems(); return; }
+    var r = await api("/api/sessions/"+ADDTO+"/items",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({addons:items})});
+    var j = await r.json();
+    if(!j.ok) alert("Gagal: "+(j.error||"coba lagi"));
+    closeAddItems(); loadSessions();
   }
 
   // ---- Walk-in sessions ----
@@ -236,21 +303,24 @@
     SESSIONS.forEach(function(s){
       var start = new Date(s.started_at).toLocaleTimeString("id-ID",{hour:"2-digit",minute:"2-digit"});
       var dur, amt, badge, acts;
+      var fnb = s.itemsAmount || 0;
+      var itemList = (s.items||[]).map(function(i){ return i.name+' x'+i.qty; }).join(', ');
       if(s.status==="open"){
         var lv = liveAmount(s);
         dur = elapsed(s.started_at)+'<br><span class="muted">'+lv.blocks+' x 15m</span>';
-        amt = rp(lv.amt)+'<br><span class="muted">berjalan</span>';
-        badge = '<span class="badge b-pending">Berjalan</span>';
-        acts = '<button class="btn primary small" onclick="endWalk(\''+s.code+'\')">■ Stop & hitung</button> '+
+        amt = '<b>'+rp(lv.amt + fnb)+'</b><br><span class="muted">meja '+rp(lv.amt)+(fnb?' + F&B '+rp(fnb):'')+'</span>';
+        badge = '<span class="badge b-pending">Bill terbuka</span>';
+        acts = '<button class="btn ghost small" onclick="openAddItems(\''+s.code+'\')">+ F&B</button> '+
+               '<button class="btn primary small" onclick="endWalk(\''+s.code+'\')">■ Stop & hitung</button> '+
                '<button class="btn danger small" onclick="cancelWalk(\''+s.code+'\')">Batal</button>';
       } else {
         dur = s.minutes+' menit<br><span class="muted">'+s.blocks+' x 15m</span>';
-        amt = '<b>'+rp(s.amount)+'</b>';
+        amt = '<b>'+rp(s.amount)+'</b>'+(fnb?'<br><span class="muted">termasuk F&B '+rp(fnb)+'</span>':'');
         badge = s.status==="paid" ? '<span class="badge b-paid">Lunas</span>' : '<span class="badge b-expired">Selesai</span>';
         acts = s.status==="closed" ? '<button class="btn primary small" onclick="payWalk(\''+s.code+'\')">Tandai Lunas</button>' : '<span class="muted">—</span>';
       }
       html += '<tr>'+
-        '<td data-l="Meja">'+s.table_name+'<br><span class="muted">'+s.branch_name+' · '+s.code+'</span></td>'+
+        '<td data-l="Meja">'+s.table_name+'<br><span class="muted">'+s.branch_name+' · '+s.code+'</span>'+(itemList?'<br><span class="muted" style="font-size:11px">'+itemList+'</span>':'')+'</td>'+
         '<td data-l="Mulai">'+start+'<br><span class="muted">'+rp(s.rate)+'/jam</span></td>'+
         '<td data-l="Durasi">'+dur+'</td>'+
         '<td data-l="Tagihan">'+amt+'</td>'+
@@ -265,7 +335,7 @@
     if(!confirm("Stop sesi "+code+" dan hitung tagihan?")) return;
     var r = await api("/api/sessions/"+code+"/end",{method:"POST"});
     var j = await r.json();
-    if(j.ok){ alert("Durasi "+j.session.minutes+" menit ("+j.session.blocks+" x 15m)\nTotal: "+rp(j.session.amount)); }
+    if(j.ok){ alert("Durasi "+j.session.minutes+" menit ("+j.session.blocks+" x 15m)\nSewa meja: "+rp(j.session.tableAmount)+"\nF&B: "+rp(j.session.itemsAmount)+"\n\nTOTAL: "+rp(j.session.amount)); }
     loadSessions();
   }
   async function payWalk(code){
