@@ -64,7 +64,7 @@ function slotPriceFor(branch, table, iso) {
     return 50000;
 }
 function freeIceTea(branch, iso, hour) {
-    return branch.id === "gs" && !isGSWeekend(iso) && hour < 15;
+    return false;
 }
 // Menu F&B. Harga TANPA koma/titik (8000, bukan 8,000). "id" harus UNIK. "cat" = kategori.
 const ADDONS = [
