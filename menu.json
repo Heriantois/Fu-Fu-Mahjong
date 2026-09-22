@@ -9,9 +9,7 @@
   "addons": [
     { "id": "mie1", "cat": "Indomie", "name": "Indomie Goreng", "price": 8000, "max": 20 },
     { "id": "mie2", "cat": "Indomie", "name": "Indomie Goreng + Telur", "price": 12000, "max": 20 },
-    { "id": "mie3", "cat": "Indomie", "name": "Indomie Rebus", "price": 8000, "max": 20 },
-    { "id": "mie4", "cat": "Indomie", "name": "Indomie Rebus + Telur", "price": 12000, "max": 20 },
-
+    
     { "id": "gor1", "cat": "Gorengan & Camilan", "name": "Singkong Goreng", "price": 21000, "max": 20 },
     { "id": "gor2", "cat": "Gorengan & Camilan", "name": "Bakso Goreng Fufu (Ayam Udang)", "price": 26000, "max": 20 },
     { "id": "gor3", "cat": "Gorengan & Camilan", "name": "Cakwe Goreng Ayam Udang", "price": 24000, "max": 20 },
