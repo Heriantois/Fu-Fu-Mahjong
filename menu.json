@@ -28,20 +28,6 @@
       "max": 20
     },
     {
-      "id": "mie3",
-      "cat": "Indomie",
-      "name": "Indomie Rebus",
-      "price": 8000,
-      "max": 20
-    },
-    {
-      "id": "mie4",
-      "cat": "Indomie",
-      "name": "Indomie Rebus + Telur",
-      "price": 12000,
-      "max": 20
-    },
-    {
       "id": "gor1",
       "cat": "Gorengan & Camilan",
       "name": "Singkong Goreng",
