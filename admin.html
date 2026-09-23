@@ -48,6 +48,32 @@
 .min{width:100%;box-sizing:border-box;font:inherit;font-size:14px;padding:9px 11px;border:1px solid var(--line);border-radius:9px;margin-bottom:8px;}
 .rvl{display:block;font-size:12px;font-weight:600;margin-bottom:4px;}
 .rowitem{display:flex;align-items:center;justify-content:space-between;border:1px solid var(--line);border-radius:9px;padding:8px 11px;margin-bottom:6px;}
+.notifbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#fff;border:1px solid var(--line);border-radius:11px;padding:10px 13px;margin:10px 0 16px;font-size:13px;}
+.notifbar.on{border-color:var(--brand);background:#f1f8f4;}
+#toastWrap{position:fixed;top:14px;right:14px;z-index:9999;display:flex;flex-direction:column;gap:8px;max-width:330px;}
+.toast{background:#146c54;color:#fff;border-radius:11px;padding:13px 15px;box-shadow:0 6px 18px rgba(0,0,0,.18);font-size:13.5px;line-height:1.45;cursor:pointer;animation:tin .25s ease;}
+.toast b{display:block;font-size:14.5px;margin-bottom:2px;}
+.toast small{display:block;opacity:.85;margin-top:4px;}
+@keyframes tin{from{transform:translateX(20px);opacity:0}to{transform:none;opacity:1}}
+.newflash{animation:flash 1.6s ease-in-out 2;}
+@keyframes flash{0%,100%{background:transparent}50%{background:#fdf3df}}
+.statrow{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:18px;}
+.stat{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px;}
+.stat .n{font-size:24px;font-weight:800;line-height:1.1;}
+.stat .l{font-size:11.5px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.03em;margin-top:4px;}
+.stat.alert{border-color:#e6c3bf;background:#fdf6f5;}
+.stat.alert .n{color:var(--red);}
+.stat.good{border-color:#bfe0cf;background:#f1f8f4;}
+.stat.good .n{color:var(--brand);}
+.sect{font-size:13px;font-weight:800;margin:20px 0 10px;display:flex;align-items:center;gap:8px;}
+.sect .cnt{background:var(--line);color:var(--muted);font-size:11px;padding:2px 8px;border-radius:999px;}
+.card2{background:#fff;border:1px solid var(--line);border-left:3px solid var(--line);border-radius:11px;padding:12px 14px;margin-bottom:8px;display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;}
+.card2.need{border-left-color:var(--red);}
+.card2.live{border-left-color:var(--brand);}
+.card2 .t1{font-size:14px;font-weight:700;}
+.card2 .t2{font-size:12px;color:var(--muted);margin-top:2px;}
+.card2 .amt{font-size:15px;font-weight:800;white-space:nowrap;}
+.emptysm{color:var(--muted);font-size:13px;padding:10px 2px;}
 </style>
 </head>
 <body>
@@ -62,13 +88,36 @@
 
   <div id="dash" style="display:none;">
     <div class="pills" style="margin-bottom:14px;">
-      <span class="pill on" id="vw-resv" onclick="showView('resv')">Reservasi</span>
+      <span class="pill on" id="vw-today" onclick="showView('today')">Hari Ini</span>
+      <span class="pill" id="vw-resv" onclick="showView('resv')">Reservasi</span>
       <span class="pill" id="vw-walk" onclick="showView('walk')">Walk-in</span>
       <span class="pill" id="vw-mem" onclick="showView('mem')">Member</span>
     </div>
 
+    <div id="todayView">
+      <h1>Hari Ini</h1>
+      <div class="sub" id="todaySub">Semua yang berjalan & yang perlu ditindak.</div>
+      <div id="notifBar2" class="notifbar">
+        <span id="notifState2">🔕 Notifikasi mati</span>
+        <button class="btn primary small" id="notifBtn2" onclick="enableNotif()">🔔 Aktifkan suara &amp; notifikasi</button>
+        <button class="btn ghost small" onclick="testBeep()">Tes suara</button>
+        <div class="sp"></div>
+        <button class="btn ghost small" onclick="loadToday()">↻ Refresh</button>
+        <button class="btn ghost small" onclick="logout()">Keluar</button>
+      </div>
+      <div id="statRow" class="statrow"></div>
+      <div id="actionWrap"></div>
+      <div id="openWrap"></div>
+      <div id="schedWrap"></div>
+    </div>
+
     <div id="walkView" style="display:none;">
       <h1>Walk-in (Bayar di Akhir)</h1>
+      <div id="notifBar" class="notifbar">
+        <span id="notifState">🔕 Notifikasi mati</span>
+        <button class="btn primary small" id="notifBtn" onclick="enableNotif()">🔔 Aktifkan suara &amp; notifikasi</button>
+        <button class="btn ghost small" onclick="testBeep()">Tes suara</button>
+      </div>
       <div class="sub">Mulai sesi saat pelanggan datang, stop saat selesai. Dihitung per 15 menit (dibulatkan ke atas).</div>
       <div class="qr-card" style="text-align:left;max-width:460px;margin-bottom:18px;">
         <div style="font-weight:800;margin-bottom:10px;">Mulai sesi baru</div>
@@ -86,6 +135,7 @@
         <div id="w-msg" class="sub" style="margin-top:10px;"></div>
       </div>
       <button class="btn ghost small" onclick="loadSessions()" style="margin-bottom:12px;">↻ Refresh</button>
+      <div id="toastWrap"></div>
       <div id="billDetailBox" class="qr-card" style="display:none;text-align:left;max-width:560px;margin-bottom:18px;"></div>
       <div id="addItemsBox" class="qr-card" style="display:none;text-align:left;max-width:520px;margin-bottom:18px;"></div>
       <div id="walkWrap"></div>
@@ -158,7 +208,7 @@
     var r = await api("/api/reservations");
     if(r.status === 401){ document.getElementById("loginErr").textContent = "Kunci salah."; return; }
     sessionStorage.setItem("fufu_admin_key", KEY);
-    showDash(); load();
+    showDash(); showView("today");
   }
   function logout(){ sessionStorage.removeItem("fufu_admin_key"); KEY=""; location.reload(); }
   function showDash(){ document.getElementById("login").style.display="none"; document.getElementById("dash").style.display="block"; }
@@ -166,6 +216,9 @@
   function setBranchFilter(name, el){ BRANCHF=name; sessionStorage.setItem("fufu_branch", name); document.querySelectorAll("#branchPills .pill").forEach(function(p){p.classList.remove("on");}); el.classList.add("on"); render(); }
 
   function showView(v){
+    document.getElementById("todayView").style.display = v==="today"?"block":"none";
+    document.getElementById("vw-today").classList.toggle("on", v==="today");
+    if(v==="today") loadToday();
     document.getElementById("resvView").style.display = v==="resv"?"block":"none";
     document.getElementById("memView").style.display = v==="mem"?"block":"none";
     document.getElementById("walkView").style.display = v==="walk"?"block":"none";
@@ -242,6 +295,231 @@
   }
 
 
+
+
+  // ================= HARI INI (unified view) =================
+  var TODAY_TIMER = null;
+  function isoToday(){ var d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+
+  async function loadToday(){
+    var r1 = await api("/api/reservations"); if(r1.status===401){logout();return;}
+    var j1 = await r1.json(); DATA = j1.reservations || [];
+    var r2 = await api("/api/sessions");
+    var j2 = await r2.json();
+    SESSIONS = j2.sessions || [];
+    detectNewOrders(SESSIONS);
+    detectNewReservations(DATA);
+    renderToday();
+    paintNotifBar();
+    if(TODAY_TIMER) clearInterval(TODAY_TIMER);
+    TODAY_TIMER = setInterval(renderToday, 1000);
+  }
+
+  function renderToday(){
+    var today = isoToday();
+    var openBills   = SESSIONS.filter(function(s){ return s.status==="open"; });
+    var unpaidBills = SESSIONS.filter(function(s){ return s.status==="closed"; });
+    var pendingResv = DATA.filter(function(x){ return x.status==="pending"; });
+    var todayResv   = DATA.filter(function(x){ return x.date===today && x.status==="paid"; });
+    var paidToday   = DATA.filter(function(x){ return x.status==="paid" && x.paid_at && new Date(x.paid_at).toDateString()===new Date().toDateString(); });
+    var revenueResv = paidToday.reduce(function(t,x){ return t + (x.payable||x.total||0); },0);
+    var revenueBill = SESSIONS.filter(function(s){ return s.status==="paid"; }).reduce(function(t,s){ return t + (s.amount||0); },0);
+
+    // running total across open bills
+    var liveTotal = openBills.reduce(function(t,s){ var lv=liveAmount(s); return t + lv.amt + (s.itemsAmount||0); },0);
+
+    document.getElementById("statRow").innerHTML =
+      '<div class="stat '+(openBills.length?'good':'')+'"><div class="n">'+openBills.length+'</div><div class="l">Bill terbuka</div></div>'+
+      '<div class="stat '+((pendingResv.length+unpaidBills.length)?'alert':'')+'"><div class="n">'+(pendingResv.length+unpaidBills.length)+'</div><div class="l">Perlu tindakan</div></div>'+
+      '<div class="stat"><div class="n">'+todayResv.length+'</div><div class="l">Reservasi hari ini</div></div>'+
+      '<div class="stat"><div class="n" style="font-size:19px">'+rp(liveTotal)+'</div><div class="l">Nilai bill jalan</div></div>'+
+      '<div class="stat"><div class="n" style="font-size:19px">'+rp(revenueResv+revenueBill)+'</div><div class="l">Sudah lunas</div></div>';
+
+    // --- needs action ---
+    var a = '<div class="sect">⚠️ Perlu tindakan <span class="cnt">'+(pendingResv.length+unpaidBills.length)+'</span></div>';
+    if(!pendingResv.length && !unpaidBills.length){
+      a += '<div class="emptysm">Tidak ada. Semua beres 👍</div>';
+    } else {
+      unpaidBills.forEach(function(s){
+        a += '<div class="card2 need"><div><div class="t1">'+s.table_name+' · sesi selesai, belum bayar</div>'+
+             '<div class="t2">'+s.branch_name+' · '+s.code+' · '+s.minutes+' menit'+((s.itemsAmount||0)?' + F&B':'')+'</div></div>'+
+             '<div style="display:flex;gap:8px;align-items:center;"><span class="amt">'+rp(s.amount)+'</span>'+
+             '<button class="btn ghost small" onclick="showBillFrom(\''+s.code+'\')">Detail</button>'+
+             '<button class="btn primary small" onclick="payWalkT(\''+s.code+'\')">Tandai Lunas</button></div></div>';
+      });
+      pendingResv.forEach(function(x){
+        a += '<div class="card2 need"><div><div class="t1">'+(x.kind==="fnb"?'🍜 ':'📅 ')+x.table_name+' · menunggu transfer</div>'+
+             '<div class="t2">'+x.branch_name+' · '+fmtDate(x.date)+' '+fmtHours(x.hours)+' · '+x.name+' ('+x.phone+')</div></div>'+
+             '<div style="display:flex;gap:8px;align-items:center;"><span class="amt">'+rp(x.payable)+'</span>'+
+             '<button class="btn primary small" onclick="markPaidT(\''+x.code+'\')">Tandai Lunas</button></div></div>';
+      });
+    }
+    document.getElementById("actionWrap").innerHTML = a;
+
+    // --- live open bills ---
+    var o = '<div class="sect">🀄 Bill terbuka (walk-in) <span class="cnt">'+openBills.length+'</span></div>';
+    if(!openBills.length){ o += '<div class="emptysm">Belum ada sesi berjalan.</div>'; }
+    openBills.forEach(function(s){
+      var lv = liveAmount(s);
+      var items = (s.items||[]).map(function(i){return i.name+" x"+i.qty;}).join(", ");
+      o += '<div class="card2 live"><div><div class="t1">'+s.table_name+' · '+(s.timer_on?'⏱ '+elapsed(s.started_at):'⏸ jam mati')+'</div>'+
+           '<div class="t2">'+s.branch_name+' · '+lv.mins+'m ('+lv.blocks+'x15m)'+(items?' · '+items:'')+'</div></div>'+
+           '<div style="display:flex;gap:8px;align-items:center;"><span class="amt">'+rp(lv.amt+(s.itemsAmount||0))+'</span>'+
+           '<button class="btn ghost small" onclick="showBillFrom(\''+s.code+'\')">Detail</button>'+
+           '<button class="btn primary small" onclick="endWalkT(\''+s.code+'\')">■ Stop</button></div></div>';
+    });
+    document.getElementById("openWrap").innerHTML = o;
+
+    // --- today's confirmed schedule ---
+    var sch = todayResv.slice().sort(function(p,q){ return (p.hours||"").localeCompare(q.hours||""); });
+    var t = '<div class="sect">📅 Jadwal hari ini (lunas) <span class="cnt">'+sch.length+'</span></div>';
+    if(!sch.length){ t += '<div class="emptysm">Belum ada reservasi lunas untuk hari ini.</div>'; }
+    sch.forEach(function(x){
+      t += '<div class="card2"><div><div class="t1">'+fmtHours(x.hours)+' · '+x.table_name+'</div>'+
+           '<div class="t2">'+x.branch_name+' · '+x.name+' ('+x.phone+')'+(x.kind==="fnb"?' · F&B':'')+'</div></div>'+
+           '<div class="amt">'+rp(x.payable||x.total)+'</div></div>';
+    });
+    document.getElementById("schedWrap").innerHTML = t;
+  }
+
+  // actions that refresh the dashboard afterwards
+  async function payWalkT(code){ await api("/api/sessions/"+code+"/pay",{method:"POST"}); loadToday(); }
+  async function endWalkT(code){
+    if(!confirm("Stop sesi "+code+" dan hitung tagihan?")) return;
+    var r = await api("/api/sessions/"+code+"/end",{method:"POST"});
+    var j = await r.json();
+    if(j.ok) alert("Durasi "+j.session.minutes+" menit\nSewa meja: "+rp(j.session.tableAmount)+"\nF&B: "+rp(j.session.itemsAmount)+"\n\nTOTAL: "+rp(j.session.amount));
+    loadToday();
+  }
+  async function markPaidT(code){
+    if(!confirm("Tandai "+code+" LUNAS? Invoice/konfirmasi dikirim ke pelanggan.")) return;
+    var r = await api("/api/reservations/"+code+"/pay", {method:"POST"});
+    var j = await r.json();
+    if(!j.ok) alert("Gagal: "+(j.error||"coba lagi"));
+    loadToday();
+  }
+  function showBillFrom(code){ showView('walk'); setTimeout(function(){ showBill(code); }, 120); }
+
+  // alert on brand-new reservations too
+  var RSIG = null;
+  function detectNewReservations(list){
+    var codes = list.map(function(x){ return x.code; });
+    if(RSIG === null){ RSIG = codes; return; }
+    list.forEach(function(x){
+      if(RSIG.indexOf(x.code) === -1){
+        var title = (x.kind==="fnb" ? "🍜 Pesanan F&B baru — " : "📅 Reservasi baru — ") + x.table_name;
+        var body = x.branch_name+" · "+fmtDate(x.date)+" "+fmtHours(x.hours)+" · "+x.name;
+        if(NOTIF_ON){ beep(); desktopNotif(title, body, x.code); }
+        toastPlain(title, body);
+      }
+    });
+    RSIG = codes;
+  }
+  function toastPlain(title, body){
+    var wrap = document.getElementById("toastWrap");
+    var el = document.createElement("div");
+    el.className = "toast";
+    el.innerHTML = "<b>"+title+"</b>"+body;
+    el.onclick = function(){ el.remove(); };
+    wrap.appendChild(el);
+    setTimeout(function(){ if(el.parentNode) el.remove(); }, 20000);
+  }
+
+  // ---- New-order alerts: sound + desktop notification + on-screen toast ----
+  var NOTIF_ON = sessionStorage.getItem("fufu_notif") === "1";
+  var AC = null;                 // AudioContext (needs a user gesture to start)
+  var SIG = null;                // last seen signature: code -> item count
+  var FETCH_TIMER = null;
+  var NEWCODES = {};             // codes with unseen new orders
+
+  function enableNotif(){
+    try{
+      AC = AC || new (window.AudioContext || window.webkitAudioContext)();
+      if(AC.state === "suspended") AC.resume();
+    }catch(e){}
+    NOTIF_ON = true;
+    sessionStorage.setItem("fufu_notif","1");
+    if(window.Notification && Notification.permission === "default"){
+      Notification.requestPermission().then(paintNotifBar);
+    }
+    beep(); paintNotifBar();
+  }
+  function paintNotifBar(){ [["notifBar","notifState","notifBtn"],["notifBar2","notifState2","notifBtn2"]].forEach(function(ids){ paintOneBar(ids[0],ids[1],ids[2]); }); }
+  function paintOneBar(barId, stId, btnId){
+    var bar = document.getElementById(barId);
+    var st  = document.getElementById(stId);
+    var btn = document.getElementById(btnId);
+    if(!bar) return;
+    if(NOTIF_ON){
+      bar.classList.add("on");
+      var perm = (window.Notification && Notification.permission) || "unsupported";
+      st.innerHTML = "🔔 Notifikasi <b>aktif</b>" + (perm==="granted" ? " (suara + pop-up)" : " (suara saja)");
+      btn.style.display = "none";
+    } else {
+      bar.classList.remove("on");
+      st.textContent = "🔕 Notifikasi mati — klik tombol supaya ada suara saat ada pesanan baru";
+      btn.style.display = "";
+    }
+  }
+  function beep(){
+    try{
+      AC = AC || new (window.AudioContext || window.webkitAudioContext)();
+      if(AC.state === "suspended") AC.resume();
+      // two short rising tones — audible but not alarming
+      [0, 0.18].forEach(function(t, i){
+        var o = AC.createOscillator(), g = AC.createGain();
+        o.type = "sine";
+        o.frequency.value = i ? 1046 : 784;       // G5 then C6
+        g.gain.setValueAtTime(0.0001, AC.currentTime + t);
+        g.gain.exponentialRampToValueAtTime(0.25, AC.currentTime + t + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, AC.currentTime + t + 0.16);
+        o.connect(g); g.connect(AC.destination);
+        o.start(AC.currentTime + t); o.stop(AC.currentTime + t + 0.18);
+      });
+    }catch(e){}
+  }
+  function testBeep(){ if(!NOTIF_ON) enableNotif(); else beep(); }
+
+  function toast(title, body, code){
+    var wrap = document.getElementById("toastWrap");
+    var el = document.createElement("div");
+    el.className = "toast";
+    el.innerHTML = "<b>"+title+"</b>"+body+"<small>Klik untuk lihat bill</small>";
+    el.onclick = function(){ showBill(code); el.remove(); };
+    wrap.appendChild(el);
+    setTimeout(function(){ if(el.parentNode) el.remove(); }, 20000);
+  }
+  function desktopNotif(title, body, code){
+    if(!(window.Notification && Notification.permission === "granted")) return;
+    try{
+      var n = new Notification(title, { body: body, tag: "fufu-"+code, renotify: true });
+      n.onclick = function(){ window.focus(); showBill(code); n.close(); };
+    }catch(e){}
+  }
+
+  // Compare the new session list against the last one and alert on changes.
+  function detectNewOrders(list){
+    var sig = {};
+    list.forEach(function(s){ sig[s.code] = (s.items||[]).length; });
+    if(SIG === null){ SIG = sig; return; }   // first load: don't alert on existing data
+    list.forEach(function(s){
+      var before = SIG[s.code];
+      var now = (s.items||[]).length;
+      var isNewBill = before === undefined && s.status === "open";
+      var hasNewItems = before !== undefined && now > before;
+      if(isNewBill || hasNewItems){
+        var added = (s.items||[]).slice(isNewBill ? 0 : before);
+        var names = added.map(function(i){ return i.name+" x"+i.qty; }).join(", ");
+        var title = isNewBill ? "🀄 Bill baru — "+s.table_name : "🍜 Pesanan baru — "+s.table_name;
+        var body  = (names || "bill dibuka")+" · "+s.branch_name;
+        NEWCODES[s.code] = true;
+        if(NOTIF_ON){ beep(); desktopNotif(title, body, s.code); }
+        toast(title, body, s.code);
+      }
+    });
+    SIG = sig;
+  }
+
   // ---- Bill detail panel (bigger view) ----
   var BILLOPEN = null;
   function billHTML(s, forPrint){
@@ -291,6 +569,7 @@
 
   function showBill(code){
     BILLOPEN = code;
+    delete NEWCODES[code];
     renderBill();
     document.getElementById("billDetailBox").style.display = "block";
     window.scrollTo(0,0);
@@ -362,10 +641,35 @@
   }
   async function loadSessions(){
     var r = await api("/api/sessions"); if(r.status===401){logout();return;}
-    var j = await r.json(); SESSIONS = j.sessions || [];
+    var j = await r.json();
+    SESSIONS = j.sessions || [];
+    detectNewOrders(SESSIONS);
     renderSessions();
+    paintNotifBar();
     if(walkTimer) clearInterval(walkTimer);
-    walkTimer = setInterval(renderSessions, 1000); // live timer
+    walkTimer = setInterval(renderSessions, 1000);        // live clock
+    if(FETCH_TIMER) clearInterval(FETCH_TIMER);
+    FETCH_TIMER = setInterval(refetchSessions, 8000);      // check for new orders
+  }
+  async function refetchSessions(){
+    var onWalk = document.getElementById("walkView").style.display !== "none";
+    var onToday = document.getElementById("todayView").style.display !== "none";
+    if(!onWalk && !onToday) return;
+    try{
+      var r = await api("/api/sessions"); if(r.status===401){logout();return;}
+      var j = await r.json();
+      SESSIONS = j.sessions || [];
+      detectNewOrders(SESSIONS);
+      if(document.getElementById("todayView").style.display !== "none"){
+        var rr = await api("/api/reservations");
+        var jj = await rr.json();
+        DATA = jj.reservations || [];
+        detectNewReservations(DATA);
+        renderToday();
+      } else {
+        renderSessions();
+      }
+    }catch(e){}
   }
   function elapsed(ms){
     var sec = Math.max(0, Math.floor((Date.now()-ms)/1000));
@@ -413,7 +717,7 @@
         acts = '<button class="btn ghost small" onclick="showBill(\''+s.code+'\')">🧾 Detail</button> '+
                (s.status==="closed" ? '<button class="btn primary small" onclick="payWalk(\''+s.code+'\')">Tandai Lunas</button>' : '');
       }
-      html += '<tr>'+
+      html += '<tr class="'+(NEWCODES[s.code]?'newflash':'')+'">'+
         '<td data-l="Meja">'+s.table_name+'<br><span class="muted">'+s.branch_name+' · '+s.code+'</span>'+(itemList?'<br><span class="muted" style="font-size:11px">'+itemList+'</span>':'')+'</td>'+
         '<td data-l="Mulai">'+start+'<br><span class="muted">'+rp(s.rate)+'/jam</span></td>'+
         '<td data-l="Durasi">'+dur+'</td>'+
@@ -520,7 +824,7 @@
       } else {
         acts = printLink;
       }
-      html += '<tr>'+
+      html += '<tr class="'+(NEWCODES[s.code]?'newflash':'')+'">'+
         '<td data-l="Tanggal">'+fmtDate(x.date)+'<br><span class="muted">'+x.code+'</span></td>'+
         '<td data-l="Jam">'+fmtHours(x.hours)+'</td>'+
         '<td data-l="Cabang / Meja">'+x.branch_name+(x.kind==="fnb"?' <span class="badge b-paid" style="background:#eef3fb;color:#3457a6">F&B</span>':'')+'<br><span class="muted">'+x.table_name+'</span></td>'+
@@ -551,7 +855,7 @@
   setInterval(function(){ if(document.getElementById("dash").style.display!=="none") load(); }, 30000);
 
   // if we already have a key from this session, go straight in
-  if(KEY){ showDash(); load(); }
+  if(KEY){ showDash(); showView("today"); }
 </script>
 </body>
 </html>

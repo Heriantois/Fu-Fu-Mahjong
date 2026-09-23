@@ -45,6 +45,7 @@ const {
   BANK_HOLDER = "",           // nama pemilik rekening
   ADMIN_KEY = "",
   FONNTE_TOKEN = "",          // token dari fonnte.com (WhatsApp otomatis)
+  STAFF_WHATSAPP = "",        // nomor WA staf/dapur untuk notifikasi pesanan baru (pisahkan dengan koma untuk beberapa nomor)
   PORT = 3001,
 } = process.env;
 
@@ -246,6 +247,12 @@ async function sendWhatsApp(phone, message) {
 }
 const safeWA = (phone, message) => sendWhatsApp(phone, message).catch((err) => console.error("[wa] error:", err.message));
 
+// Notify staff/kitchen numbers (STAFF_WHATSAPP, comma-separated) about a new order.
+function notifyStaff(message) {
+  const list = String(STAFF_WHATSAPP || "").split(",").map((x) => x.trim()).filter(Boolean);
+  for (const n of list) safeWA(n, message);
+}
+
 function waBookingText(b) {
   const jam = (b.slots || []).join(", ");
   const lines = [
@@ -446,6 +453,13 @@ app.post("/api/reservations", async (req, res) => {
     console.log(`[reservasi] ${code} MEMBER @ ${body.branch} · ${body.table} ${body.date} [${(body.hours || []).join(",")}] -${result.usedHours} jam`);
     res.json({ ok: true, code, member: true, usedHours: result.usedHours, hoursRemaining: result.hoursRemaining });
     safeWA(body.phone, waMemberText({ ...body, code, usedHours: result.usedHours, hoursRemaining: result.hoursRemaining }));
+    notifyStaff([
+      `📅 *RESERVASI BARU (Member)* — ${body.table}`,
+      `${body.branch} · ${formatDateID(body.date)}`,
+      `Jam: ${(body.slots || []).join(", ")}`,
+      `Nama: ${body.name} · ${body.phone}`,
+      `Dibayar dengan ${result.usedHours} jam member — TERKONFIRMASI`,
+    ].join("\n"));
     return;
   }
 
@@ -461,6 +475,13 @@ app.post("/api/reservations", async (req, res) => {
   });
 
   safeWA(body.phone, waBookingText(full));
+  notifyStaff([
+    `📅 *RESERVASI BARU* — ${body.table}`,
+    `${body.branch} · ${formatDateID(body.date)}`,
+    `Jam: ${(body.slots || []).join(", ")}`,
+    `Nama: ${body.name} · ${body.phone}`,
+    `Tagihan: ${rupiah(result.payable)} (menunggu transfer)`,
+  ].join("\n"));
 });
 
 // Create an F&B order (VA payment, no calendar slot).
@@ -479,6 +500,14 @@ app.post("/api/fnb-orders", (req, res) => {
     bankName: BANK_NAME, bankAccount: BANK_ACCOUNT, bankHolder: BANK_HOLDER, expiresAt: result.expiresAt,
   });
   safeWA(b.phone, waFnbText(full));
+  notifyStaff([
+    `🍜 *PESANAN F&B (bayar transfer)* — ${b.table_no}`,
+    `${b.branch} · ${code}`,
+    ``,
+    ...(b.addons || []).map((a) => `- ${a.name} x${a.qty}`),
+    ``,
+    `Tagihan: ${rupiah(result.payable)} (menunggu transfer)`,
+  ].join("\n"));
 });
 
 // Public: the shared F&B menu (single source of truth = menu.json).
@@ -529,6 +558,17 @@ app.post("/api/open-session/add", (req, res) => {
   const itemsTotal = (updated.items || []).reduce((t, i) => t + i.qty * i.price, 0);
   console.log(`[openbill] ${open.code} + ${b.addons.length} item (QR) · meja ${b.table_no} · F&B total ${rupiah(itemsTotal)}`);
   res.json({ ok: true, code: open.code, table: open.table_name, itemsTotal });
+
+  // ping the kitchen/staff so a new order never sits unnoticed
+  notifyStaff([
+    `🍜 *PESANAN BARU* — ${open.table_name}`,
+    `${open.branch_name} · bill ${open.code}`,
+    ``,
+    ...b.addons.map((a) => `- ${a.name} x${a.qty}`),
+    ``,
+    `Masuk ke bill meja (bayar di akhir).`,
+  ].join("\n"));
+
   if (open.phone) {
     safeWA(open.phone, [
       `*Pesanan ditambahkan ke bill* 🀄`,
