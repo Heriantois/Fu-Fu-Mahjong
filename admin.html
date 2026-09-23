@@ -86,6 +86,7 @@
         <div id="w-msg" class="sub" style="margin-top:10px;"></div>
       </div>
       <button class="btn ghost small" onclick="loadSessions()" style="margin-bottom:12px;">↻ Refresh</button>
+      <div id="billDetailBox" class="qr-card" style="display:none;text-align:left;max-width:560px;margin-bottom:18px;"></div>
       <div id="addItemsBox" class="qr-card" style="display:none;text-align:left;max-width:520px;margin-bottom:18px;"></div>
       <div id="walkWrap"></div>
     </div>
@@ -240,6 +241,85 @@
     closeAddItems(); loadSessions();
   }
 
+
+  // ---- Bill detail panel (bigger view) ----
+  var BILLOPEN = null;
+  function billHTML(s, forPrint){
+    var lv = liveAmount(s);
+    var isOpen = s.status === "open";
+    var mins   = isOpen ? lv.mins   : s.minutes;
+    var blocks = isOpen ? lv.blocks : s.blocks;
+    var tableAmt = isOpen ? lv.amt : Math.round((s.rate/4)*(s.blocks||0));
+    var fnb = (s.items||[]).reduce(function(t,i){ return t + i.qty*i.price; },0);
+    var grand = tableAmt + fnb;
+    var start = new Date(s.started_at).toLocaleString("id-ID",{dateStyle:"medium",timeStyle:"short"});
+
+    var rows = (s.items||[]).map(function(i){
+      return '<tr><td>'+i.name+'</td><td style="text-align:center">'+i.qty+'</td><td style="text-align:right">'+rp(i.price)+'</td><td style="text-align:right"><b>'+rp(i.qty*i.price)+'</b></td></tr>';
+    }).join("");
+    if(!rows) rows = '<tr><td colspan="4" style="color:#8a847a">Belum ada pesanan F&B.</td></tr>';
+
+    return ''+
+    '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;border-bottom:2px solid #146c54;padding-bottom:10px;margin-bottom:12px;">'+
+      '<div><div style="font-size:18px;font-weight:800;color:#146c54;">'+s.table_name+'</div>'+
+      '<div style="font-size:12px;color:#6b6459;">'+s.branch_name+' · Bill '+s.code+'</div></div>'+
+      '<div style="text-align:right;font-size:12px;color:#6b6459;">'+(isOpen?'BILL TERBUKA':(s.status==="paid"?'LUNAS':'SELESAI'))+'<br>'+start+'</div>'+
+    '</div>'+
+
+    '<div style="font-size:11.5px;font-weight:800;color:#146c54;text-transform:uppercase;margin:0 0 6px;">Sewa Meja</div>'+
+    '<table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:14px;">'+
+      '<tr><td>Tarif</td><td style="text-align:right">'+rp(s.rate)+' / jam</td></tr>'+
+      (isOpen ? '<tr><td>Jam berjalan</td><td style="text-align:right">'+(s.timer_on?elapsed(s.started_at):'⏸ mati')+'</td></tr>' : '')+
+      ((s.manual_minutes||0) ? '<tr><td>Tambahan manual</td><td style="text-align:right">'+s.manual_minutes+' menit</td></tr>' : '')+
+      '<tr><td>Total durasi</td><td style="text-align:right">'+mins+' menit ('+blocks+' x 15 menit)</td></tr>'+
+      '<tr style="border-top:1px solid #e8e0cf"><td><b>Subtotal meja</b></td><td style="text-align:right"><b>'+rp(tableAmt)+'</b></td></tr>'+
+    '</table>'+
+
+    '<div style="font-size:11.5px;font-weight:800;color:#146c54;text-transform:uppercase;margin:0 0 6px;">Makanan &amp; Minuman</div>'+
+    '<table style="width:100%;border-collapse:collapse;font-size:13px;">'+
+      '<thead><tr style="color:#6b6459;font-size:11px;text-transform:uppercase;"><th style="text-align:left">Item</th><th>Qty</th><th style="text-align:right">Harga</th><th style="text-align:right">Total</th></tr></thead>'+
+      '<tbody>'+rows+'</tbody>'+
+      '<tr style="border-top:1px solid #e8e0cf"><td colspan="3"><b>Subtotal F&amp;B</b></td><td style="text-align:right"><b>'+rp(fnb)+'</b></td></tr>'+
+    '</table>'+
+
+    '<div style="margin-top:14px;border-top:2px solid #1c1a16;padding-top:10px;display:flex;justify-content:space-between;align-items:baseline;">'+
+      '<div style="font-size:15px;font-weight:800;">TOTAL'+(isOpen?' (sementara)':'')+'</div>'+
+      '<div style="font-size:24px;font-weight:800;color:#146c54;">'+rp(grand)+'</div>'+
+    '</div>'+
+    (forPrint ? '<p style="font-size:11px;color:#8a847a;margin-top:16px;">Terima kasih sudah bermain di Fu Fu Mahjong &amp; Cafe. 🀄</p>' : '');
+  }
+
+  function showBill(code){
+    BILLOPEN = code;
+    renderBill();
+    document.getElementById("billDetailBox").style.display = "block";
+    window.scrollTo(0,0);
+  }
+  function renderBill(){
+    if(!BILLOPEN) return;
+    var s = SESSIONS.find(function(x){ return x.code===BILLOPEN; });
+    var box = document.getElementById("billDetailBox");
+    if(!s){ box.style.display="none"; BILLOPEN=null; return; }
+    box.innerHTML = billHTML(s, false) +
+      '<div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;">'+
+        '<button class="btn ghost" onclick="printBill(\''+s.code+'\')">🖨️ Cetak bill</button>'+
+        (s.status==="open" ? '<button class="btn ghost" onclick="openAddItems(\''+s.code+'\')">+ F&B</button>'+
+                             '<button class="btn primary" onclick="endWalk(\''+s.code+'\')">■ Stop & tagih</button>' : '')+
+        (s.status==="closed" ? '<button class="btn primary" onclick="payWalk(\''+s.code+'\')">Tandai Lunas</button>' : '')+
+        '<button class="btn ghost" onclick="closeBill()">Tutup</button>'+
+      '</div>';
+  }
+  function closeBill(){ BILLOPEN=null; document.getElementById("billDetailBox").style.display="none"; }
+  function printBill(code){
+    var s = SESSIONS.find(function(x){ return x.code===code; });
+    if(!s) return;
+    var w = window.open("", "_blank", "width=420,height=640");
+    w.document.write('<html><head><title>Bill '+s.code+'</title><style>body{font-family:Arial,Helvetica,sans-serif;color:#1c1a16;padding:18px;}table{width:100%}</style></head><body>'+billHTML(s,true)+'</body></html>');
+    w.document.close();
+    w.focus();
+    setTimeout(function(){ w.print(); }, 300);
+  }
+
   // ---- Walk-in sessions ----
   var WBRANCHES = [
     { id:"gs", name:"Fu Fu Gading Serpong", tables:["Table 1","Table 2","Table 3","Table 4","Table 5","Table 6"], rate:50000 },
@@ -299,6 +379,7 @@
     return { live: live, mins: mins, blocks: blocks, amt: Math.round((s.rate/4)*blocks) };
   }
   function renderSessions(){
+    renderBill();
     if(!SESSIONS.length){ document.getElementById("walkWrap").innerHTML='<div class="empty">Belum ada sesi walk-in.</div>'; return; }
     var html='<table><thead><tr><th>Meja</th><th>Mulai</th><th>Durasi</th><th>Tagihan</th><th>Status</th><th>Aksi</th></tr></thead><tbody>';
     SESSIONS.forEach(function(s){
@@ -322,13 +403,15 @@
                '<button class="btn ghost small" onclick="addMins(\''+s.code+'\',60)">+1j</button> '+
                '<button class="btn ghost small" onclick="addMins(\''+s.code+'\',-15)">−15m</button> '+
                '<button class="btn ghost small" onclick="openAddItems(\''+s.code+'\')">+ F&B</button> '+
+               '<button class="btn ghost small" onclick="showBill(\''+s.code+'\')">🧾 Detail</button> '+
                '<button class="btn primary small" onclick="endWalk(\''+s.code+'\')">■ Stop & tagih</button> '+
                '<button class="btn danger small" onclick="cancelWalk(\''+s.code+'\')">Batal</button>';
       } else {
         dur = s.minutes+' menit<br><span class="muted">'+s.blocks+' x 15m</span>';
         amt = '<b>'+rp(s.amount)+'</b>'+(fnb?'<br><span class="muted">termasuk F&B '+rp(fnb)+'</span>':'');
         badge = s.status==="paid" ? '<span class="badge b-paid">Lunas</span>' : '<span class="badge b-expired">Selesai</span>';
-        acts = s.status==="closed" ? '<button class="btn primary small" onclick="payWalk(\''+s.code+'\')">Tandai Lunas</button>' : '<span class="muted">—</span>';
+        acts = '<button class="btn ghost small" onclick="showBill(\''+s.code+'\')">🧾 Detail</button> '+
+               (s.status==="closed" ? '<button class="btn primary small" onclick="payWalk(\''+s.code+'\')">Tandai Lunas</button>' : '');
       }
       html += '<tr>'+
         '<td data-l="Meja">'+s.table_name+'<br><span class="muted">'+s.branch_name+' · '+s.code+'</span>'+(itemList?'<br><span class="muted" style="font-size:11px">'+itemList+'</span>':'')+'</td>'+
