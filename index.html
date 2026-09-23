@@ -511,18 +511,13 @@ function App() {
         try {
             const res = await fetch(`${API_BASE}/api/open-session/add`, {
                 method: "POST", headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ branchId: fnbBranch.id, table_no: fnbTable.trim(), addons: items }),
+                body: JSON.stringify({ branchId: fnbBranch.id, branch: fnbBranch.name, table_no: fnbTable.trim(), addons: items }),
             });
             const d = await res.json().catch(() => ({}));
             setFnbSubmitting(false);
             if (res.ok && d.ok) {
                 setBillAdded(d);
                 setFood({});
-                return;
-            }
-            if (d.error === "no_open_session") {
-                setFnbError("Meja ini belum punya sesi berjalan. Minta staf membuka sesi, atau bayar sekarang.");
-                setOpenBill(null);
                 return;
             }
             setFnbError("Gagal menambahkan ke bill. Coba lagi.");
@@ -614,18 +609,23 @@ function App() {
                             foodCount,
                             " item"),
                         React.createElement("span", { className: "v" }, rupiah(foodTotal)))),
-                    openBill && (React.createElement("div", { className: "rv-note", style: { marginTop: 14 } },
+                    React.createElement("div", { className: "rv-note", style: { marginTop: 14 } },
                         React.createElement("span", null, "\uD83C\uDC04"),
-                        React.createElement("span", null,
-                            "Meja ini sedang punya ",
-                            React.createElement("b", null, "sesi berjalan"),
-                            " (bill ",
-                            openBill.code,
-                            "). Kamu bisa masukkan pesanan ke bill dan bayar semuanya di akhir."))),
+                        React.createElement("span", null, openBill
+                            ? React.createElement(React.Fragment, null,
+                                "Meja ini punya ",
+                                React.createElement("b", null, "bill terbuka"),
+                                " (",
+                                openBill.code,
+                                "). Pesanan masuk ke bill \u2014 bayar semuanya di kasir saat selesai.")
+                            : React.createElement(React.Fragment, null,
+                                "Pesanan akan masuk ke ",
+                                React.createElement("b", null, "bill meja"),
+                                ". Kamu tidak perlu bayar sekarang \u2014 semua (sewa meja + F&B) dibayar di kasir saat selesai."))),
                     fnbError && React.createElement("div", { className: "rv-conflict", style: { marginTop: 14, marginBottom: 0 } }, fnbError),
                     React.createElement("div", { className: "rv-nav", style: { flexDirection: "column", gap: 8 } },
-                        openBill && (React.createElement("button", { className: "rv-btn primary", style: { width: "100%" }, onClick: addToOpenBill, disabled: fnbSubmitting || foodCount === 0 }, fnbSubmitting ? "Memproses…" : `Tambah ke bill meja · ${rupiah(foodTotal)}`)),
-                        React.createElement("button", { className: `rv-btn ${openBill ? "ghost" : "primary"}`, style: { width: "100%" }, onClick: submitFnbOrder, disabled: fnbSubmitting || foodCount === 0 || !fnbTable.trim() || !fnbPhone.trim() }, fnbSubmitting ? "Memproses…" : `Bayar sekarang ${rupiah(foodTotal)}`)))),
+                        React.createElement("button", { className: "rv-btn primary", style: { width: "100%" }, onClick: addToOpenBill, disabled: fnbSubmitting || foodCount === 0 || !fnbTable.trim() }, fnbSubmitting ? "Memproses…" : `Pesan sekarang, bayar di akhir · ${rupiah(foodTotal)}`),
+                        React.createElement("button", { className: "rv-btn ghost", style: { width: "100%" }, onClick: submitFnbOrder, disabled: fnbSubmitting || foodCount === 0 || !fnbTable.trim() || !fnbPhone.trim() }, fnbSubmitting ? "Memproses…" : `Atau bayar sekarang (transfer) · ${rupiah(foodTotal)}`)))),
                 billAdded && (React.createElement("div", { className: "rv-center" },
                     React.createElement("div", { className: "rv-check" },
                         React.createElement("svg", { width: "26", height: "26", viewBox: "0 0 24 24", fill: "none", strokeWidth: "3", strokeLinecap: "round", strokeLinejoin: "round" },

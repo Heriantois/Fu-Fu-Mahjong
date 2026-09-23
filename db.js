@@ -81,6 +81,10 @@ db.exec(`
 for (const col of ["unique_code INTEGER", "payable INTEGER", "paid_at INTEGER", "kind TEXT DEFAULT 'reservation'"]) {
   try { db.exec(`ALTER TABLE reservations ADD COLUMN ${col}`); } catch { /* already exists */ }
 }
+// Bill fields: timer_on = is the clock running, manual_minutes = hours added by staff by hand.
+for (const col of ["timer_on INTEGER DEFAULT 1", "manual_minutes INTEGER DEFAULT 0"]) {
+  try { db.exec(`ALTER TABLE sessions ADD COLUMN ${col}`); } catch { /* already exists */ }
+}
 
 const releaseExpired = db.transaction(() => {
   const now = Date.now();
@@ -249,11 +253,45 @@ export function topUpMember({ phone, name, tier, hours, reason }) {
 export function startSession(b) {
   const now = Date.now();
   const code = "WI-" + Math.random().toString(36).slice(2, 7).toUpperCase();
+  const timerOn = b.timerOn === false ? 0 : 1;
   db.prepare(`
-    INSERT INTO sessions (code, branch_id, branch_name, table_id, table_name, name, phone, rate, started_at, status)
-    VALUES (?,?,?,?,?,?,?,?,?, 'open')
-  `).run(code, b.branchId, b.branch, b.tableId || null, b.table_name, b.name || null, b.phone || null, Number(b.rate) || 0, now);
+    INSERT INTO sessions (code, branch_id, branch_name, table_id, table_name, name, phone, rate, started_at, status, timer_on, manual_minutes)
+    VALUES (?,?,?,?,?,?,?,?,?, 'open', ?, 0)
+  `).run(code, b.branchId, b.branch, b.tableId || null, b.table_name, b.name || null, b.phone || null, Number(b.rate) || 0, now, timerOn);
   return db.prepare(`SELECT * FROM sessions WHERE code=?`).get(code);
+}
+
+// Find the table's open bill, or create one (used when a customer orders via QR
+// before staff has started a session — the clock stays OFF until staff starts it).
+export function getOrCreateOpenBill({ branchId, branch, table_name, rate }) {
+  const existing = getOpenSession(branchId, table_name);
+  if (existing) return { bill: existing, created: false };
+  const bill = startSession({ branchId, branch, table_name, rate: rate || 0, timerOn: false });
+  return { bill, created: true };
+}
+
+// Staff adds table time by hand (minutes). Use negative to correct a mistake.
+export function addManualMinutes(code, minutes) {
+  const s = db.prepare(`SELECT * FROM sessions WHERE code=? AND status='open'`).get(code);
+  if (!s) return null;
+  const next = Math.max(0, (s.manual_minutes || 0) + Number(minutes || 0));
+  db.prepare(`UPDATE sessions SET manual_minutes=? WHERE id=?`).run(next, s.id);
+  return getSessionByCode(code);
+}
+
+// Start/stop the running clock on an open bill.
+export function setTimer(code, on) {
+  const s = db.prepare(`SELECT * FROM sessions WHERE code=? AND status='open'`).get(code);
+  if (!s) return null;
+  if (on) {
+    // starting (or restarting) the clock: bank any elapsed time first, then reset the start point
+    db.prepare(`UPDATE sessions SET timer_on=1, started_at=? WHERE id=?`).run(Date.now(), s.id);
+  } else {
+    const elapsed = s.timer_on ? Math.max(0, Math.round((Date.now() - s.started_at) / 60000)) : 0;
+    db.prepare(`UPDATE sessions SET timer_on=0, manual_minutes=? WHERE id=?`)
+      .run((s.manual_minutes || 0) + elapsed, s.id);
+  }
+  return getSessionByCode(code);
 }
 
 // Close a session: table time (per 15-min block, rounded up) + F&B items on the bill.
@@ -261,9 +299,10 @@ export function endSession(code) {
   const s = db.prepare(`SELECT * FROM sessions WHERE code=? AND status='open'`).get(code);
   if (!s) return null;
   const now = Date.now();
-  const minutes = Math.max(1, Math.round((now - s.started_at) / 60000));
-  const blocks = Math.ceil(minutes / 15);                  // 15-minute blocks, rounded up
-  const tableAmount = Math.round((s.rate / 4) * blocks);   // rate is per hour = 4 blocks
+  const live = s.timer_on ? Math.max(0, Math.round((now - s.started_at) / 60000)) : 0;
+  const minutes = live + (s.manual_minutes || 0);
+  const blocks = minutes > 0 ? Math.ceil(minutes / 15) : 0;   // 15-minute blocks, rounded up
+  const tableAmount = Math.round((s.rate / 4) * blocks);      // rate is per hour = 4 blocks
   const itemsAmount = getSessionItems(code).reduce((t, i) => t + i.qty * i.price, 0);
   const amount = tableAmount + itemsAmount;
   db.prepare(`UPDATE sessions SET ended_at=?, minutes=?, blocks=?, amount=?, status='closed' WHERE id=?`)

@@ -293,9 +293,10 @@
     return (h?h+"j ":"")+m+"m "+String(ss).padStart(2,"0")+"s";
   }
   function liveAmount(s){
-    var mins = Math.max(1, Math.round((Date.now()-s.started_at)/60000));
-    var blocks = Math.ceil(mins/15);
-    return { mins: mins, blocks: blocks, amt: Math.round((s.rate/4)*blocks) };
+    var live = s.timer_on ? Math.max(0, Math.round((Date.now()-s.started_at)/60000)) : 0;
+    var mins = live + (s.manual_minutes||0);
+    var blocks = mins>0 ? Math.ceil(mins/15) : 0;
+    return { live: live, mins: mins, blocks: blocks, amt: Math.round((s.rate/4)*blocks) };
   }
   function renderSessions(){
     if(!SESSIONS.length){ document.getElementById("walkWrap").innerHTML='<div class="empty">Belum ada sesi walk-in.</div>'; return; }
@@ -307,11 +308,21 @@
       var itemList = (s.items||[]).map(function(i){ return i.name+' x'+i.qty; }).join(', ');
       if(s.status==="open"){
         var lv = liveAmount(s);
-        dur = elapsed(s.started_at)+'<br><span class="muted">'+lv.blocks+' x 15m</span>';
+        var clockTxt = s.timer_on
+          ? '⏱ jalan '+elapsed(s.started_at)
+          : '<span class="muted">⏸ jam mati</span>';
+        var manualTxt = (s.manual_minutes||0) ? '<br><span class="muted">+ '+(s.manual_minutes)+'m manual</span>' : '';
+        dur = clockTxt + manualTxt + '<br><span class="muted">total '+lv.mins+'m = '+lv.blocks+' x 15m</span>';
         amt = '<b>'+rp(lv.amt + fnb)+'</b><br><span class="muted">meja '+rp(lv.amt)+(fnb?' + F&B '+rp(fnb):'')+'</span>';
         badge = '<span class="badge b-pending">Bill terbuka</span>';
-        acts = '<button class="btn ghost small" onclick="openAddItems(\''+s.code+'\')">+ F&B</button> '+
-               '<button class="btn primary small" onclick="endWalk(\''+s.code+'\')">■ Stop & hitung</button> '+
+        acts = (s.timer_on
+                  ? '<button class="btn ghost small" onclick="setClock(\''+s.code+'\',false)">⏸ Jeda jam</button> '
+                  : '<button class="btn ghost small" onclick="setClock(\''+s.code+'\',true)">▶ Mulai jam</button> ')+
+               '<button class="btn ghost small" onclick="addMins(\''+s.code+'\',15)">+15m</button> '+
+               '<button class="btn ghost small" onclick="addMins(\''+s.code+'\',60)">+1j</button> '+
+               '<button class="btn ghost small" onclick="addMins(\''+s.code+'\',-15)">−15m</button> '+
+               '<button class="btn ghost small" onclick="openAddItems(\''+s.code+'\')">+ F&B</button> '+
+               '<button class="btn primary small" onclick="endWalk(\''+s.code+'\')">■ Stop & tagih</button> '+
                '<button class="btn danger small" onclick="cancelWalk(\''+s.code+'\')">Batal</button>';
       } else {
         dur = s.minutes+' menit<br><span class="muted">'+s.blocks+' x 15m</span>';
@@ -330,6 +341,14 @@
     });
     html+='</tbody></table>';
     document.getElementById("walkWrap").innerHTML = html;
+  }
+  async function addMins(code, m){
+    await api("/api/sessions/"+code+"/minutes",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({minutes:m})});
+    loadSessions();
+  }
+  async function setClock(code, on){
+    await api("/api/sessions/"+code+"/timer",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({on:on})});
+    loadSessions();
   }
   async function endWalk(code){
     if(!confirm("Stop sesi "+code+" dan hitung tagihan?")) return;

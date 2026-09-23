@@ -22,6 +22,7 @@ import {
   getMember, listMembers, topUpMember,
   startSession, endSession, paySession, cancelSession, listSessions,
   addSessionItems, getOpenSession, getSessionByCode, getSessionItems,
+  getOrCreateOpenBill, addManualMinutes, setTimer,
 } from "./db.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -482,15 +483,24 @@ app.post("/api/fnb-orders", (req, res) => {
 
 // Public: the shared F&B menu (single source of truth = menu.json).
 // Both the website and the admin page read this, so prices only need editing in one file.
-app.get("/api/menu", (_req, res) => {
+function readMenuFile() {
   try {
-    const raw = fs.readFileSync(path.join(__dirname, "menu.json"), "utf8");
-    const m = JSON.parse(raw);
-    res.json({ ok: true, addons: m.addons || [], featured: m.featured || [] });
+    return JSON.parse(fs.readFileSync(path.join(__dirname, "menu.json"), "utf8"));
   } catch (err) {
     console.error("[menu] gagal baca menu.json:", err.message);
-    res.status(500).json({ ok: false, error: "menu tidak bisa dibaca", addons: [], featured: [] });
+    return null;
   }
+}
+function walkinRateFor(branchId) {
+  const m = readMenuFile();
+  const r = (m && m.walkinRates) || {};
+  return Number(r[branchId]) || 0;
+}
+
+app.get("/api/menu", (_req, res) => {
+  const m = readMenuFile();
+  if (!m) return res.status(500).json({ ok: false, error: "menu tidak bisa dibaca", addons: [], featured: [] });
+  res.json({ ok: true, addons: m.addons || [], featured: m.featured || [], walkinRates: m.walkinRates || {} });
 });
 
 // Public: does this table have an open walk-in bill? (for QR F&B "add to bill")
@@ -508,8 +518,13 @@ app.post("/api/open-session/add", (req, res) => {
   if (!b.branchId || !b.table_no || !Array.isArray(b.addons) || !b.addons.length) {
     return res.status(400).json({ ok: false, error: "data kurang" });
   }
-  const open = getOpenSession(b.branchId, b.table_no);
-  if (!open) return res.status(409).json({ ok: false, error: "no_open_session" });
+  // If staff hasn't opened a bill for this table yet, open one automatically.
+  // The table clock stays OFF until staff starts it, so no table time is charged by accident.
+  const { bill: open, created } = getOrCreateOpenBill({
+    branchId: b.branchId, branch: b.branch || b.branchId,
+    table_name: b.table_no, rate: walkinRateFor(b.branchId),
+  });
+  if (created) console.log(`[openbill] AUTO-OPEN ${open.code} · meja ${b.table_no} (dari QR)`);
   const updated = addSessionItems(open.code, b.addons, "qr");
   const itemsTotal = (updated.items || []).reduce((t, i) => t + i.qty * i.price, 0);
   console.log(`[openbill] ${open.code} + ${b.addons.length} item (QR) · meja ${b.table_no} · F&B total ${rupiah(itemsTotal)}`);
@@ -536,6 +551,22 @@ app.post("/api/sessions/:code/items", (req, res) => {
   res.json({ ok: true, session: out });
 });
 
+// Owner: add table time by hand (minutes; negative to correct)
+app.post("/api/sessions/:code/minutes", (req, res) => {
+  if (!requireAdmin(req, res)) return;
+  const out = addManualMinutes(req.params.code, (req.body || {}).minutes);
+  if (!out) return res.json({ ok: false, error: "sesi tidak ditemukan / sudah ditutup" });
+  res.json({ ok: true, session: out });
+});
+
+// Owner: start / stop the running clock on an open bill
+app.post("/api/sessions/:code/timer", (req, res) => {
+  if (!requireAdmin(req, res)) return;
+  const out = setTimer(req.params.code, !!(req.body || {}).on);
+  if (!out) return res.json({ ok: false, error: "sesi tidak ditemukan / sudah ditutup" });
+  res.json({ ok: true, session: out });
+});
+
 // ---- Walk-in sessions (owner-only): start / stop / pay / list ----
 app.get("/api/sessions", (req, res) => {
   if (!requireAdmin(req, res)) return;
@@ -546,6 +577,7 @@ app.post("/api/sessions/start", (req, res) => {
   if (!requireAdmin(req, res)) return;
   const b = req.body || {};
   if (!b.branchId || !b.table_name) return res.status(400).json({ ok: false, error: "cabang & meja wajib" });
+  if (!b.rate) b.rate = walkinRateFor(b.branchId);
   const s = startSession(b);
   console.log(`[walkin] START ${s.code} @ ${b.branch} · ${b.table_name} (rate ${rupiah(b.rate || 0)}/jam)`);
   res.json({ ok: true, session: s });
