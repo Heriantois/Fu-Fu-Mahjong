@@ -171,6 +171,7 @@ const styles = `
 .rv-divider{height:1px;background:var(--line);margin:20px 0;}
 .rv-cat{font-size:11.5px;font-weight:800;color:var(--brand);text-transform:uppercase;letter-spacing:.05em;margin:18px 0 8px;}
 .rv-cat.first{margin-top:4px;}
+.rv-promo{background:#f6efdd;border:1px solid #e3c98b;color:#7a5a1e;font-size:12.5px;font-weight:700;border-radius:10px;padding:10px 13px;margin-bottom:12px;}
 .rv-tabs{display:flex;gap:6px;margin-bottom:16px;background:#f3efe3;border-radius:11px;padding:4px;}
 .rv-tab{flex:1;font:inherit;font-size:13.5px;font-weight:700;padding:9px;border:none;border-radius:8px;background:transparent;color:var(--muted);cursor:pointer;}
 .rv-tab.on{background:#fff;color:var(--brand);box-shadow:0 1px 3px rgba(0,0,0,.06);}
@@ -232,6 +233,7 @@ function App() {
     // Menu loaded from the server (menu.json) — single source of truth.
     const [ADDONS, setMenu] = useState([]);
     const [FEATURED, setFeatured] = useState([]);
+    const [PROMO, setPromo] = useState({});
     const [menuLoaded, setMenuLoaded] = useState(false);
     useEffect(() => {
         let cancelled = false;
@@ -240,6 +242,7 @@ function App() {
             .then((d) => { if (!cancelled) {
             setMenu(d.addons || []);
             setFeatured(d.featured || []);
+            setPromo(d.promo || {});
             setMenuLoaded(true);
         } })
             .catch(() => { if (!cancelled)
@@ -295,7 +298,11 @@ function App() {
     }, [branch]);
     const pastHour = (h) => isToday && h <= nowHour;
     const unitPrice = branch && table && date ? slotPriceFor(branch, table, date) : 0;
-    const slotTotal = slots.length * unitPrice;
+    // Promo "beli 1 jam gratis 1 jam": jam ke-2, ke-4, dst gratis.
+    const promoOn = !!(PROMO.buyOneGetOne && PROMO.appliesToReservation !== false);
+    const paidHours = promoOn ? Math.ceil(slots.length / 2) : slots.length;
+    const freeHours = slots.length - paidHours;
+    const slotTotal = paidHours * unitPrice;
     const addonTotal = ADDONS.reduce((s, a) => s + (addons[a.id] || 0) * a.price, 0);
     const addonCount = ADDONS.reduce((s, a) => s + (addons[a.id] || 0), 0);
     const total = slotTotal + addonTotal;
@@ -419,8 +426,10 @@ function App() {
             total, branchId: branch.id, tableId: table.id, branch: branch.name, table: table.name + " · " + table.type,
             date, hours: hoursSel, slots: hoursSel.map(hhmm), duration: hoursSel.length, addons: chosenAddons, ...form,
         };
-        if (useMember)
+        if (useMember) {
             payload.memberPhone = memberPhone.trim();
+            payload.memberHours = paidHours;
+        }
         setSubmitting(true);
         setSubmitError("");
         try {
@@ -724,6 +733,10 @@ function App() {
                             "Yah, jam ",
                             conflict.map(hhmm).join(", "),
                             " baru saja dipesan orang lain. Silakan pilih jam lain ya.")),
+                        promoOn && (React.createElement("div", { className: "rv-promo" },
+                            "\uD83C\uDF89 ",
+                            PROMO.label || "Beli 1 jam GRATIS 1 jam",
+                            " \u2014 pilih 2 jam, bayar 1 jam!")),
                         React.createElement("label", { className: "rv-label" },
                             "Jam (",
                             rupiah(unitPrice),
@@ -752,7 +765,8 @@ function App() {
                             React.createElement("span", { className: "l" },
                                 slots.length,
                                 " jam \u00B7 ",
-                                table.name),
+                                table.name,
+                                freeHours > 0 ? ` · ${freeHours} jam gratis 🎉` : ""),
                             React.createElement("span", { className: "v" }, rupiah(slotTotal)))))))),
                 step === 2 && (React.createElement("div", { className: "rv-card" },
                     React.createElement("h2", { className: "rv-h" }, "Pesanan & data diri"),
@@ -818,7 +832,9 @@ function App() {
                                 " jam)"),
                             React.createElement("span", { className: "rv-sval" }, slots.map(hhmm).join(", "))),
                         React.createElement("div", { className: "rv-srow" },
-                            React.createElement("span", { className: "rv-slabel" }, "Sewa meja"),
+                            React.createElement("span", { className: "rv-slabel" },
+                                "Sewa meja",
+                                freeHours > 0 ? ` (bayar ${paidHours} jam, ${freeHours} gratis)` : ""),
                             React.createElement("span", { className: "rv-sval" }, rupiah(slotTotal))),
                         ADDONS.filter((a) => addons[a.id]).map((a) => (React.createElement("div", { className: "rv-srow", key: a.id },
                             React.createElement("span", { className: "rv-slabel" },
@@ -853,17 +869,22 @@ function App() {
                                 memberInfo.hoursRemaining,
                                 " jam"),
                             ".",
-                            memberInfo.hoursRemaining >= slots.length
+                            memberInfo.hoursRemaining >= paidHours
                                 ? React.createElement("button", { className: "rv-btn primary", style: { marginTop: 10, display: "block", width: "100%" }, onClick: () => createBooking(true), disabled: submitting },
                                     "Bayar dengan ",
                                     slots.length,
                                     " jam member")
                                 : React.createElement("div", { className: "rv-errmsg", style: { marginTop: 6 } },
                                     "Saldo kurang (butuh ",
-                                    slots.length,
+                                    paidHours,
                                     " jam)."))),
                         memberInfo && memberInfo.found === false && React.createElement("div", { className: "rv-errmsg", style: { marginTop: 8 } }, "Nomor member tidak ditemukan."))),
                     addonTotal > 0 && (React.createElement("p", { className: "rv-sub", style: { marginTop: 12, marginBottom: 0, fontSize: 11.5 } }, "Jam member hanya untuk sewa meja \u2014 hapus item menu F&B kalau mau bayar pakai jam.")),
+                    freeHours > 0 && (React.createElement("p", { className: "rv-sub", style: { marginTop: 12, marginBottom: 0, color: "#146c54", fontWeight: 700 } },
+                        "\uD83C\uDF89 Promo: ",
+                        freeHours,
+                        " jam gratis \u2014 hemat ",
+                        rupiah(freeHours * unitPrice))),
                     anyFreeTea && React.createElement("p", { className: "rv-sub", style: { marginTop: 12, marginBottom: 0 } }, "\uD83E\uDDCA Termasuk gratis 1 pitcher es teh untuk jam 08:00\u201315:00 (weekday)."),
                     submitError && React.createElement("div", { className: "rv-conflict", style: { marginTop: 14, marginBottom: 0 } }, submitError))),
                 step === 4 && booking && booking.member && (React.createElement("div", { className: "rv-card rv-center" },

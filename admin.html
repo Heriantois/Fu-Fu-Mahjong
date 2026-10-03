@@ -218,7 +218,7 @@
   function showView(v){
     document.getElementById("todayView").style.display = v==="today"?"block":"none";
     document.getElementById("vw-today").classList.toggle("on", v==="today");
-    if(v==="today") loadToday();
+    if(v==="today"){ loadMenu(); loadToday(); }
     document.getElementById("resvView").style.display = v==="resv"?"block":"none";
     document.getElementById("memView").style.display = v==="mem"?"block":"none";
     document.getElementById("walkView").style.display = v==="walk"?"block":"none";
@@ -244,6 +244,7 @@
         map[c].push([a.name, a.price]);
       });
       WMENU = cats.map(function(c){ return { cat:c, items:map[c] }; });
+      PROMO = j.promo || {};
     }catch(e){ WMENU = []; }
   }
 
@@ -676,11 +677,15 @@
     var h = Math.floor(sec/3600), m = Math.floor((sec%3600)/60), ss = sec%60;
     return (h?h+"j ":"")+m+"m "+String(ss).padStart(2,"0")+"s";
   }
+  var PROMO = {};
+  function promoPaidMin(m){ var c=Math.floor(m/120), r=m%120; return c*60 + Math.min(r,60); }
   function liveAmount(s){
     var live = s.timer_on ? Math.max(0, Math.round((Date.now()-s.started_at)/60000)) : 0;
     var mins = live + (s.manual_minutes||0);
-    var blocks = mins>0 ? Math.ceil(mins/15) : 0;
-    return { live: live, mins: mins, blocks: blocks, amt: Math.round((s.rate/4)*blocks) };
+    var on = !!(PROMO.buyOneGetOne && PROMO.appliesToWalkin !== false);
+    var billed = on ? promoPaidMin(mins) : mins;
+    var blocks = billed>0 ? Math.ceil(billed/15) : 0;
+    return { live: live, mins: mins, billed: billed, free: mins-billed, blocks: blocks, amt: Math.round((s.rate/4)*blocks) };
   }
   function renderSessions(){
     renderBill();
@@ -697,7 +702,7 @@
           ? '⏱ jalan '+elapsed(s.started_at)
           : '<span class="muted">⏸ jam mati</span>';
         var manualTxt = (s.manual_minutes||0) ? '<br><span class="muted">+ '+(s.manual_minutes)+'m manual</span>' : '';
-        dur = clockTxt + manualTxt + '<br><span class="muted">total '+lv.mins+'m = '+lv.blocks+' x 15m</span>';
+        dur = clockTxt + manualTxt + '<br><span class="muted">total '+lv.mins+'m'+(lv.free?' · '+lv.free+'m gratis 🎉':'')+' = '+lv.blocks+' x 15m</span>';
         amt = '<b>'+rp(lv.amt + fnb)+'</b><br><span class="muted">meja '+rp(lv.amt)+(fnb?' + F&B '+rp(fnb):'')+'</span>';
         badge = '<span class="badge b-pending">Bill terbuka</span>';
         acts = (s.timer_on

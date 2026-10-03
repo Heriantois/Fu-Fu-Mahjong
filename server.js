@@ -520,6 +520,16 @@ function readMenuFile() {
     return null;
   }
 }
+function promoConfig() {
+  const m = readMenuFile();
+  return (m && m.promo) || {};
+}
+// Buy 1 hour get 1 hour: the 2nd, 4th, ... hour is free.
+export function promoPaidMinutes(minutes) {
+  const cycles = Math.floor(minutes / 120);
+  const rem = minutes % 120;
+  return cycles * 60 + Math.min(rem, 60);
+}
 function walkinRateFor(branchId) {
   const m = readMenuFile();
   const r = (m && m.walkinRates) || {};
@@ -529,7 +539,7 @@ function walkinRateFor(branchId) {
 app.get("/api/menu", (_req, res) => {
   const m = readMenuFile();
   if (!m) return res.status(500).json({ ok: false, error: "menu tidak bisa dibaca", addons: [], featured: [] });
-  res.json({ ok: true, addons: m.addons || [], featured: m.featured || [], walkinRates: m.walkinRates || {} });
+  res.json({ ok: true, addons: m.addons || [], featured: m.featured || [], walkinRates: m.walkinRates || {}, promo: m.promo || {} });
 });
 
 // Public: does this table have an open walk-in bill? (for QR F&B "add to bill")
@@ -625,7 +635,8 @@ app.post("/api/sessions/start", (req, res) => {
 
 app.post("/api/sessions/:code/end", (req, res) => {
   if (!requireAdmin(req, res)) return;
-  const s = endSession(req.params.code);
+  const pc = promoConfig();
+  const s = endSession(req.params.code, !!(pc.buyOneGetOne && pc.appliesToWalkin !== false));
   if (!s) return res.json({ ok: false, error: "sesi tidak ditemukan / sudah ditutup" });
   console.log(`[walkin] END ${s.code} — meja ${rupiah(s.tableAmount)} + F&B ${rupiah(s.itemsAmount)} = ${rupiah(s.amount)}`);
   // tell the customer their bill on WhatsApp (if we have a number)
@@ -636,7 +647,7 @@ app.post("/api/sessions/:code/end", (req, res) => {
       `Kode: ${s.code}`,
       `Meja: ${s.table_name}`,
       ``,
-      `Sewa meja: ${s.minutes} menit (${s.blocks} x 15 menit) = ${rupiah(s.tableAmount)}`,
+      `Sewa meja: ${s.minutes} menit${s.freeMinutes ? ` (${s.freeMinutes} menit GRATIS 🎉)` : ""} = ${rupiah(s.tableAmount)}`,
       ...(itemLines.length ? [``, `Makanan & minuman:`, ...itemLines, `Subtotal F&B: ${rupiah(s.itemsAmount)}`] : []),
       ``,
       `*TOTAL: ${rupiah(s.amount)}*`,

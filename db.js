@@ -146,7 +146,7 @@ export function createReservation(b) {
       const p = normPhone(b.memberPhone);
       const m = db.prepare(`SELECT * FROM members WHERE phone=?`).get(p);
       if (!m) return { ok: false, error: "member_not_found" };
-      const need = hours.length;
+      const need = Number(b.memberHours) > 0 ? Number(b.memberHours) : hours.length;  // promo-aware (client sends paid hours)
       if (m.hours_remaining < need) return { ok: false, error: "insufficient", hoursRemaining: m.hours_remaining };
       const info = insertReservation.run({
         code: b.code, branch_id: b.branchId, branch_name: b.branch,
@@ -295,14 +295,18 @@ export function setTimer(code, on) {
 }
 
 // Close a session: table time (per 15-min block, rounded up) + F&B items on the bill.
-export function endSession(code) {
+function promoPaid(m) { const c = Math.floor(m / 120), r = m % 120; return c * 60 + Math.min(r, 60); }
+
+export function endSession(code, promoOn) {
   const s = db.prepare(`SELECT * FROM sessions WHERE code=? AND status='open'`).get(code);
   if (!s) return null;
   const now = Date.now();
   const live = s.timer_on ? Math.max(0, Math.round((now - s.started_at) / 60000)) : 0;
   const minutes = live + (s.manual_minutes || 0);
-  const blocks = minutes > 0 ? Math.ceil(minutes / 15) : 0;   // 15-minute blocks, rounded up
-  const tableAmount = Math.round((s.rate / 4) * blocks);      // rate is per hour = 4 blocks
+  // Promo "beli 1 jam gratis 1 jam": the 2nd, 4th, ... hour is free.
+  const billedMinutes = promoOn ? promoPaid(minutes) : minutes;
+  const blocks = billedMinutes > 0 ? Math.ceil(billedMinutes / 15) : 0;  // 15-minute blocks, rounded up
+  const tableAmount = Math.round((s.rate / 4) * blocks);                 // rate is per hour = 4 blocks
   const itemsAmount = getSessionItems(code).reduce((t, i) => t + i.qty * i.price, 0);
   const amount = tableAmount + itemsAmount;
   db.prepare(`UPDATE sessions SET ended_at=?, minutes=?, blocks=?, amount=?, status='closed' WHERE id=?`)
@@ -310,6 +314,8 @@ export function endSession(code) {
   const out = db.prepare(`SELECT * FROM sessions WHERE id=?`).get(s.id);
   out.tableAmount = tableAmount;
   out.itemsAmount = itemsAmount;
+  out.billedMinutes = billedMinutes;
+  out.freeMinutes = minutes - billedMinutes;
   out.items = getSessionItems(code);
   return out;
 }

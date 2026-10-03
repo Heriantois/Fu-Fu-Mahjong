@@ -6,6 +6,13 @@
     "'featured' = menu unggulan untuk carousel. 'img' boleh URL atau '/img/namafile.jpg' (kosong = placeholder).",
     "Setelah edit: Commit di GitHub -> Render redeploy -> selesai. Tidak perlu ubah file lain."
   ],
+  "promo": {
+    "_help": "Promo sewa meja. buyOneGetOne: true = jam ke-2, ke-4, dst GRATIS (beli 1 jam gratis 1 jam). Set false untuk mematikan promo.",
+    "buyOneGetOne": true,
+    "label": "Beli 1 jam GRATIS 1 jam",
+    "appliesToReservation": true,
+    "appliesToWalkin": true
+  },
   "walkinRates": {
     "_help": "Tarif walk-in per jam (dipakai admin & bill otomatis dari QR). Ubah di sini saja.",
     "gs": 50000,
@@ -24,6 +31,20 @@
       "id": "mie2",
       "cat": "Indomie",
       "name": "Indomie Goreng + Telur",
+      "price": 12000,
+      "max": 20
+    },
+    {
+      "id": "mie3",
+      "cat": "Indomie",
+      "name": "Indomie Rebus",
+      "price": 8000,
+      "max": 20
+    },
+    {
+      "id": "mie4",
+      "cat": "Indomie",
+      "name": "Indomie Rebus + Telur",
       "price": 12000,
       "max": 20
     },
