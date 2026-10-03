@@ -42,13 +42,6 @@
       "max": 20
     },
     {
-      "id": "mie4",
-      "cat": "Indomie",
-      "name": "Indomie Rebus + Telur",
-      "price": 12000,
-      "max": 20
-    },
-    {
       "id": "gor1",
       "cat": "Gorengan & Camilan",
       "name": "Singkong Goreng",
@@ -73,7 +66,7 @@
       "id": "gor4",
       "cat": "Gorengan & Camilan",
       "name": "Pisang Goreng Wijen",
-      "price": 21000,
+      "price": 25000,
       "max": 20
     },
     {
@@ -87,7 +80,7 @@
       "id": "gor6",
       "cat": "Gorengan & Camilan",
       "name": "Siomay Goreng Si Oma (4 pcs)",
-      "price": 30000,
+      "price": 28000,
       "max": 20
     },
     {
@@ -101,7 +94,7 @@
       "id": "kue1",
       "cat": "Kue",
       "name": "Pia Oma Kacang Hijau (3 pcs)",
-      "price": 20000,
+      "price": 22000,
       "max": 20
     },
     {
@@ -160,6 +153,13 @@
       "price": 8000,
       "max": 50
     },
+     {
+      "id": "drink9",
+      "cat": "Minuman",
+      "name": "Ice Thai Tea",
+      "price": 20000,
+      "max": 50
+    },
     {
       "id": "Picther1",
       "cat": "Pitcher",
@@ -185,7 +185,7 @@
   "featured": [
     {
       "name": "Siomay Goreng Si Oma",
-      "price": 30000,
+      "price": 28000,
       "img": "/img/Siomaygoreng.png"
     },
     {
