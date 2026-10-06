@@ -23,70 +23,56 @@
       "cat": "Indomie",
       "name": "Indomie Goreng",
       "price": 8000,
-      "max": 20
+      "max": 30
     },
     {
       "id": "mie2",
       "cat": "Indomie",
       "name": "Indomie Goreng + Telur",
       "price": 12000,
-      "max": 20
-    },
-    {
-      "id": "mie3",
-      "cat": "Indomie",
-      "name": "Indomie Rebus",
-      "price": 8000,
-      "max": 20
-    },
-    {
-      "id": "mie4",
-      "cat": "Indomie",
-      "name": "Indomie Rebus + Telur",
-      "price": 12000,
-      "max": 20
+      "max": 30
     },
     {
       "id": "gor1",
       "cat": "Gorengan & Camilan",
       "name": "Singkong Goreng",
       "price": 21000,
-      "max": 20
+      "max": 30
     },
     {
       "id": "gor2",
       "cat": "Gorengan & Camilan",
       "name": "Bakso Goreng Fufu (Ayam Udang)",
       "price": 26000,
-      "max": 20
+      "max": 30
     },
     {
       "id": "gor3",
       "cat": "Gorengan & Camilan",
       "name": "Cakwe Goreng Ayam Udang",
       "price": 24000,
-      "max": 20
+      "max": 30
     },
     {
       "id": "gor4",
       "cat": "Gorengan & Camilan",
       "name": "Pisang Goreng Wijen",
-      "price": 21000,
-      "max": 20
+      "price": 25000,
+      "max": 30
     },
     {
       "id": "gor5",
       "cat": "Gorengan & Camilan",
       "name": "Mini Wonton XXI wannabe",
       "price": 22000,
-      "max": 20
+      "max": 30
     },
     {
       "id": "gor6",
       "cat": "Gorengan & Camilan",
-      "name": "Siomay Goreng Si Oma (4 pcs)",
-      "price": 30000,
-      "max": 20
+      "name": "Siomay Goreng Si Oma (3 pcs)",
+      "price": 28000,
+      "max": 30
     },
     {
       "id": "gor7",
@@ -98,8 +84,8 @@
     {
       "id": "kue1",
       "cat": "Kue",
-      "name": "Pia Oma Kacang Hijau (3 pcs)",
-      "price": 20000,
+      "name": "Pia Favourite Oma (3 pcs)",
+      "price": 22000,
       "max": 20
     },
     {
@@ -112,8 +98,8 @@
     {
       "id": "drink2",
       "cat": "Minuman",
-      "name": "Es Teh Solo",
-      "price": 15000,
+      "name": "Air Mineral",
+      "price": 8000,
       "max": 50
     },
     {
@@ -154,8 +140,15 @@
     {
       "id": "drink8",
       "cat": "Minuman",
-      "name": "Air Mineral",
-      "price": 8000,
+      "name": "Ice Thai Tea",
+      "price": 20000,
+      "max": 50
+    },
+    {
+      "id": "drink9",
+      "cat": "Minuman",
+      "name": "Es Teh Solo",
+      "price": 15000,
       "max": 50
     },
     {
@@ -183,7 +176,7 @@
   "featured": [
     {
       "name": "Siomay Goreng Si Oma",
-      "price": 30000,
+      "price": 28000,
       "img": "/img/Siomaygoreng.png"
     },
     {
