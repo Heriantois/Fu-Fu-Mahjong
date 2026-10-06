@@ -26,7 +26,7 @@ const BRANCHES = [
     {
         id: "gs", name: "Fu Fu Gading Serpong", area: "Gading Serpong, Tangerang",
         address: "Ruko Sentra Niaga Blok SG 3 No. 8, Lt. 2, Sinpasa",
-        open: 8, close: 22,
+        open: 9, close: 24, // 09:00 - tengah malam (slot terakhir 23:00)
         tables: [
             { id: "gs1", name: "Table 1", type: "Reguler" },
             { id: "gs2", name: "Table 2", type: "Reguler" },
@@ -34,18 +34,6 @@ const BRANCHES = [
             { id: "gs4", name: "Table 4", type: "Reguler" },
             { id: "gs5", name: "Table 5", type: "Reguler" },
             { id: "gs6", name: "Table 6", type: "Reguler" },
-        ],
-    },
-    {
-        id: "bsd", name: "Fu Fu BSD", area: "BSD (Pulse Padel)",
-        address: "Pulse Padel, BSD",
-        open: 8, close: 23,
-        tables: [
-            { id: "b1", name: "Meja Reguler", type: "Reguler" },
-            { id: "b2", name: "VIP 1", type: "VIP" },
-            { id: "b3", name: "VIP 2", type: "VIP" },
-            { id: "b4", name: "VIP 3", type: "VIP" },
-            { id: "b5", name: "VIP 4", type: "VIP" },
         ],
     },
 ];
@@ -57,8 +45,6 @@ const PUBLIC_HOLIDAYS = [
 function isHoliday(iso) { return PUBLIC_HOLIDAYS.indexOf(iso) !== -1; }
 function isGSWeekend(iso) { const d = new Date(iso).getDay(); return d === 5 || d === 6 || d === 0 || isHoliday(iso); }
 function slotPriceFor(branch, table, iso) {
-    if (branch.id === "bsd")
-        return table.type === "VIP" ? 85000 : 75000;
     if (branch.id === "gs")
         return isGSWeekend(iso) ? 60000 : 50000;
     return 50000;

@@ -15,9 +15,7 @@
   },
   "walkinRates": {
     "_help": "Tarif walk-in per jam (dipakai admin & bill otomatis dari QR). Ubah di sini saja.",
-    "gs": 50000,
-    "bsd": 75000,
-    "bsd_vip": 85000
+    "gs": 50000
   },
   "addons": [
     {
@@ -31,6 +29,20 @@
       "id": "mie2",
       "cat": "Indomie",
       "name": "Indomie Goreng + Telur",
+      "price": 12000,
+      "max": 20
+    },
+    {
+      "id": "mie3",
+      "cat": "Indomie",
+      "name": "Indomie Rebus",
+      "price": 8000,
+      "max": 20
+    },
+    {
+      "id": "mie4",
+      "cat": "Indomie",
+      "name": "Indomie Rebus + Telur",
       "price": 12000,
       "max": 20
     },
@@ -59,7 +71,7 @@
       "id": "gor4",
       "cat": "Gorengan & Camilan",
       "name": "Pisang Goreng Wijen",
-      "price": 25000,
+      "price": 21000,
       "max": 20
     },
     {
@@ -73,7 +85,7 @@
       "id": "gor6",
       "cat": "Gorengan & Camilan",
       "name": "Siomay Goreng Si Oma (4 pcs)",
-      "price": 28000,
+      "price": 30000,
       "max": 20
     },
     {
@@ -87,7 +99,7 @@
       "id": "kue1",
       "cat": "Kue",
       "name": "Pia Oma Kacang Hijau (3 pcs)",
-      "price": 22000,
+      "price": 20000,
       "max": 20
     },
     {
@@ -146,13 +158,6 @@
       "price": 8000,
       "max": 50
     },
-     {
-      "id": "drink9",
-      "cat": "Minuman",
-      "name": "Ice Thai Tea",
-      "price": 20000,
-      "max": 50
-    },
     {
       "id": "Picther1",
       "cat": "Pitcher",
@@ -178,7 +183,7 @@
   "featured": [
     {
       "name": "Siomay Goreng Si Oma",
-      "price": 28000,
+      "price": 30000,
       "img": "/img/Siomaygoreng.png"
     },
     {
