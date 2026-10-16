@@ -102,7 +102,49 @@
       "price": 20000,
       "max": 20
     },
-    
+     {
+      "id": "Dine1",
+      "cat": "Dining",
+      "name": "Nasi Chicken Teriyaki",
+      "price": 32000,
+      "max": 20
+    },
+{
+      "id": "Dine2",
+      "cat": "Dining",
+      "name": "Nasi Beef Teriyaki",
+      "price": 38000,
+      "max": 20
+    },
+{
+      "id": "Dine3",
+      "cat": "Dining",
+      "name": "Pad Krapaw Chicken",
+      "price": 32000,
+      "max": 20
+    },
+{
+      "id": "Dine4",
+      "cat": "Dining",
+      "name": "Hoki Hemat 3 But Better",
+      "price": 30000,
+      "max": 20
+    },
+{
+      "id": "Dine5",
+      "cat": "Dining",
+      "name": "Thai Style Omelette with Rice",
+      "price": 24000,
+      "max": 20
+    },
+{
+      "id": "Dine6",
+      "cat": "Dining",
+      "name": "Fufu Fried Rice",
+      "price": 26000,
+      "max": 20
+    },
+ 
     {
       "id": "drink1",
       "cat": "Minuman",
