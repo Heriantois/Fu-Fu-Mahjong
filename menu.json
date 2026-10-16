@@ -49,7 +49,7 @@
     {
       "id": "gor3",
       "cat": "Gorengan & Camilan",
-      "name": "Cakwe Goreng Ayam Udang",
+      "name": "Cakwe Goreng Ayam Udang + Saos Mayo",
       "price": 24000,
       "max": 30
     },
@@ -79,7 +79,14 @@
       "cat": "Gorengan & Camilan",
       "name": "Pangsit Goreng Ayam Udang (3 pcs) + mayo",
       "price": 20000,
-      "max": 20
+      "max": 25
+    },
+    {
+      "id": "gor8",
+      "cat": "Gorengan & Camilan",
+      "name": "Singkong Goreng",
+      "price": 21000,
+      "max": 25
     },
     {
       "id": "kue1",
@@ -89,66 +96,67 @@
       "max": 20
     },
     {
+      "id": "kue2",
+      "cat": "Kue",
+      "name": "Mini Pao Ayam (3pcs)",
+      "price": 20000,
+      "max": 20
+    },
+    
+    {
       "id": "drink1",
       "cat": "Minuman",
       "name": "Es Teh Tawar",
       "price": 7000,
       "max": 50
     },
-    {
+     {
       "id": "drink2",
+      "cat": "Minuman",
+      "name": "Es Teh Manis Solo ",
+      "price": 15000,
+      "max": 50
+    },
+    {
+      "id": "drink3",
       "cat": "Minuman",
       "name": "Air Mineral",
       "price": 8000,
       "max": 50
     },
     {
-      "id": "drink3",
+      "id": "drink4",
       "cat": "Minuman",
       "name": "Ice Lemon Tea",
       "price": 20000,
       "max": 50
     },
     {
-      "id": "drink4",
+      "id": "drink5",
       "cat": "Minuman",
       "name": "Ice Lychee Tea",
       "price": 23000,
       "max": 50
     },
     {
-      "id": "drink5",
+      "id": "drink6",
       "cat": "Minuman",
       "name": "Ice Kopi Susu",
       "price": 18000,
       "max": 50
     },
     {
-      "id": "drink6",
+      "id": "drink7",
       "cat": "Minuman",
       "name": "Ice Matcha Latte",
       "price": 22000,
       "max": 50
     },
     {
-      "id": "drink7",
+      "id": "drink8",
       "cat": "Minuman",
       "name": "Ice Cokelat Dankin",
       "price": 23000,
-      "max": 50
-    },
-    {
-      "id": "drink8",
-      "cat": "Minuman",
-      "name": "Ice Thai Tea",
-      "price": 20000,
-      "max": 50
-    },
-    {
-      "id": "drink9",
-      "cat": "Minuman",
-      "name": "Es Teh Solo",
-      "price": 15000,
       "max": 50
     },
     {
