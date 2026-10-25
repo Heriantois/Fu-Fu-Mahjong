@@ -9,7 +9,6 @@
   "promo": {
     "_help": "Promo sewa meja. buyOneGetOne: true = beli 2 jam GRATIS 1 jam (setiap 3 jam, 1 jam gratis: 3 jam bayar 2, 6 jam bayar 4, dst). Set false untuk mematikan promo.",
     "buyOneGetOne": true,
-    "label": "Beli 2 jam GRATIS 1 jam",
     "appliesToReservation": true,
     "appliesToWalkin": true
   },
@@ -134,7 +133,7 @@
       "id": "Dine6",
       "cat": "Dining",
       "name": "Fufu Fried Rice",
-      "price": 28000,
+      "price": 26000,
       "max": 20
     },
  

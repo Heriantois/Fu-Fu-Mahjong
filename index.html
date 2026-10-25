@@ -37,7 +37,7 @@ const BRANCHES = [
         ],
     },
 ];
-// Tanggal libur nasional (Weekend rate berlaku di Gading Serpong). Format "YYYY-MM-DD".
+// Tanggal libur nasional (saat ini tidak mempengaruhi harga; tarif flat Rp50.000). Format "YYYY-MM-DD".
 const PUBLIC_HOLIDAYS = [
     "2026-01-01", "2026-08-17", "2026-12-25",
     // tambahkan Idul Fitri, Nyepi, Waisak, dll sesuai penetapan pemerintah
@@ -45,8 +45,7 @@ const PUBLIC_HOLIDAYS = [
 function isHoliday(iso) { return PUBLIC_HOLIDAYS.indexOf(iso) !== -1; }
 function isGSWeekend(iso) { const d = new Date(iso).getDay(); return d === 5 || d === 6 || d === 0 || isHoliday(iso); }
 function slotPriceFor(branch, table, iso) {
-    if (branch.id === "gs")
-        return isGSWeekend(iso) ? 60000 : 50000;
+    // Tarif flat Rp50.000/jam (weekend & hari libur sama dengan weekday).
     return 50000;
 }
 function freeIceTea(branch, iso, hour) {
@@ -720,9 +719,7 @@ function App() {
                             conflict.map(hhmm).join(", "),
                             " baru saja dipesan orang lain. Silakan pilih jam lain ya.")),
                         promoOn && (React.createElement("div", { className: "rv-promo" },
-                            "\uD83C\uDF89 ",
-                            PROMO.label || "Beli 2 jam GRATIS 1 jam",
-                            " \u2014 pilih 3 jam, bayar 2 jam!")),
+                            "Pilih 3 jam, bayar 2 jam!")),
                         React.createElement("label", { className: "rv-label" },
                             "Jam (",
                             rupiah(unitPrice),
@@ -751,8 +748,7 @@ function App() {
                             React.createElement("span", { className: "l" },
                                 slots.length,
                                 " jam \u00B7 ",
-                                table.name,
-                                freeHours > 0 ? ` · ${freeHours} jam gratis 🎉` : ""),
+                                table.name),
                             React.createElement("span", { className: "v" }, rupiah(slotTotal)))))))),
                 step === 2 && (React.createElement("div", { className: "rv-card" },
                     React.createElement("h2", { className: "rv-h" }, "Pesanan & data diri"),
@@ -866,11 +862,6 @@ function App() {
                                     " jam)."))),
                         memberInfo && memberInfo.found === false && React.createElement("div", { className: "rv-errmsg", style: { marginTop: 8 } }, "Nomor member tidak ditemukan."))),
                     addonTotal > 0 && (React.createElement("p", { className: "rv-sub", style: { marginTop: 12, marginBottom: 0, fontSize: 11.5 } }, "Jam member hanya untuk sewa meja \u2014 hapus item menu F&B kalau mau bayar pakai jam.")),
-                    freeHours > 0 && (React.createElement("p", { className: "rv-sub", style: { marginTop: 12, marginBottom: 0, color: "#146c54", fontWeight: 700 } },
-                        "\uD83C\uDF89 Promo: ",
-                        freeHours,
-                        " jam gratis \u2014 hemat ",
-                        rupiah(freeHours * unitPrice))),
                     anyFreeTea && React.createElement("p", { className: "rv-sub", style: { marginTop: 12, marginBottom: 0 } }, "\uD83E\uDDCA Termasuk gratis 1 pitcher es teh untuk jam 08:00\u201315:00 (weekday)."),
                     submitError && React.createElement("div", { className: "rv-conflict", style: { marginTop: 14, marginBottom: 0 } }, submitError))),
                 step === 4 && booking && booking.member && (React.createElement("div", { className: "rv-card rv-center" },
