@@ -284,9 +284,9 @@ function App() {
     }, [branch]);
     const pastHour = (h) => isToday && h <= nowHour;
     const unitPrice = branch && table && date ? slotPriceFor(branch, table, date) : 0;
-    // Promo "beli 1 jam gratis 1 jam": jam ke-2, ke-4, dst gratis.
+    // Promo "beli 2 jam gratis 1 jam": setiap 3 jam, 1 jam gratis (3 jam = bayar 2; 6 jam = bayar 4, dst).
     const promoOn = !!(PROMO.buyOneGetOne && PROMO.appliesToReservation !== false);
-    const paidHours = promoOn ? Math.ceil(slots.length / 2) : slots.length;
+    const paidHours = promoOn ? slots.length - Math.floor(slots.length / 3) : slots.length;
     const freeHours = slots.length - paidHours;
     const slotTotal = paidHours * unitPrice;
     const addonTotal = ADDONS.reduce((s, a) => s + (addons[a.id] || 0) * a.price, 0);
@@ -721,8 +721,8 @@ function App() {
                             " baru saja dipesan orang lain. Silakan pilih jam lain ya.")),
                         promoOn && (React.createElement("div", { className: "rv-promo" },
                             "\uD83C\uDF89 ",
-                            PROMO.label || "Beli 1 jam GRATIS 1 jam",
-                            " \u2014 pilih 2 jam, bayar 1 jam!")),
+                            PROMO.label || "Beli 2 jam GRATIS 1 jam",
+                            " \u2014 pilih 3 jam, bayar 2 jam!")),
                         React.createElement("label", { className: "rv-label" },
                             "Jam (",
                             rupiah(unitPrice),

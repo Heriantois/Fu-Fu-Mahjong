@@ -295,7 +295,7 @@ export function setTimer(code, on) {
 }
 
 // Close a session: table time (per 15-min block, rounded up) + F&B items on the bill.
-function promoPaid(m) { const c = Math.floor(m / 120), r = m % 120; return c * 60 + Math.min(r, 60); }
+function promoPaid(m) { const c = Math.floor(m / 180), r = m % 180; return c * 120 + Math.min(r, 120); }  // beli 2 jam gratis 1 jam
 
 export function endSession(code, promoOn) {
   const s = db.prepare(`SELECT * FROM sessions WHERE code=? AND status='open'`).get(code);
@@ -303,7 +303,7 @@ export function endSession(code, promoOn) {
   const now = Date.now();
   const live = s.timer_on ? Math.max(0, Math.round((now - s.started_at) / 60000)) : 0;
   const minutes = live + (s.manual_minutes || 0);
-  // Promo "beli 1 jam gratis 1 jam": the 2nd, 4th, ... hour is free.
+  // Promo "beli 2 jam gratis 1 jam": every 3rd hour is free (180 min = pay 120).
   const billedMinutes = promoOn ? promoPaid(minutes) : minutes;
   const blocks = billedMinutes > 0 ? Math.ceil(billedMinutes / 15) : 0;  // 15-minute blocks, rounded up
   const tableAmount = Math.round((s.rate / 4) * blocks);                 // rate is per hour = 4 blocks

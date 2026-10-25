@@ -677,7 +677,7 @@
     return (h?h+"j ":"")+m+"m "+String(ss).padStart(2,"0")+"s";
   }
   var PROMO = {};
-  function promoPaidMin(m){ var c=Math.floor(m/120), r=m%120; return c*60 + Math.min(r,60); }
+  function promoPaidMin(m){ var c=Math.floor(m/180), r=m%180; return c*120 + Math.min(r,120); } // beli 2 jam gratis 1 jam (per 180 menit, bayar 120)
   function liveAmount(s){
     var live = s.timer_on ? Math.max(0, Math.round((Date.now()-s.started_at)/60000)) : 0;
     var mins = live + (s.manual_minutes||0);

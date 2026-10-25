@@ -524,11 +524,11 @@ function promoConfig() {
   const m = readMenuFile();
   return (m && m.promo) || {};
 }
-// Buy 1 hour get 1 hour: the 2nd, 4th, ... hour is free.
+// Buy 2 hours get 1 hour free: every 3rd hour is free (180 min = pay 120).
 export function promoPaidMinutes(minutes) {
-  const cycles = Math.floor(minutes / 120);
-  const rem = minutes % 120;
-  return cycles * 60 + Math.min(rem, 60);
+  const cycles = Math.floor(minutes / 180);
+  const rem = minutes % 180;
+  return cycles * 120 + Math.min(rem, 120);
 }
 function walkinRateFor(branchId) {
   const m = readMenuFile();

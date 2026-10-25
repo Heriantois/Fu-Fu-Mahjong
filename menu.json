@@ -7,9 +7,9 @@
     "Setelah edit: Commit di GitHub -> Render redeploy -> selesai. Tidak perlu ubah file lain."
   ],
   "promo": {
-    "_help": "Promo sewa meja. buyOneGetOne: true = jam ke-2, ke-4, dst GRATIS (beli 1 jam gratis 1 jam). Set false untuk mematikan promo.",
+    "_help": "Promo sewa meja. buyOneGetOne: true = beli 2 jam GRATIS 1 jam (setiap 3 jam, 1 jam gratis: 3 jam bayar 2, 6 jam bayar 4, dst). Set false untuk mematikan promo.",
     "buyOneGetOne": true,
-    "label": "Beli 1 jam GRATIS 1 jam",
+    "label": "Beli 2 jam GRATIS 1 jam",
     "appliesToReservation": true,
     "appliesToWalkin": true
   },
