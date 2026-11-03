@@ -21,119 +21,105 @@
       "id": "mie1",
       "cat": "Indomie",
       "name": "Indomie Goreng",
-      "price": 8000,
+      "price": 10000,
       "max": 30
     },
     {
-      "id": "mie2",
-      "cat": "Indomie",
-      "name": "Indomie Goreng + Telur",
-      "price": 12000,
+      "id": "tel1",
+      "cat": "Telur",
+      "name": "Dadar / Mata Sapi",
+      "price": 5000,
       "max": 30
     },
     {
       "id": "gor1",
       "cat": "Gorengan & Camilan",
       "name": "Singkong Goreng",
-      "price": 21000,
+      "price": 25000,
       "max": 30
     },
     {
       "id": "gor2",
       "cat": "Gorengan & Camilan",
       "name": "Bakso Goreng Fufu (Ayam Udang)",
-      "price": 26000,
+      "price": 29000,
       "max": 30
     },
     {
       "id": "gor3",
       "cat": "Gorengan & Camilan",
       "name": "Cakwe Goreng Ayam Udang + Saos Mayo",
-      "price": 24000,
+      "price": 29000,
       "max": 30
     },
     {
       "id": "gor4",
       "cat": "Gorengan & Camilan",
       "name": "Pisang Goreng Wijen",
-      "price": 25000,
+      "price": 29000,
       "max": 30
     },
     {
       "id": "gor5",
       "cat": "Gorengan & Camilan",
       "name": "Mini Wonton XXI wannabe",
-      "price": 22000,
+      "price": 29000,
       "max": 30
     },
     {
       "id": "gor6",
       "cat": "Gorengan & Camilan",
       "name": "Siomay Goreng Si Oma (3 pcs)",
-      "price": 28000,
+      "price": 34000,
       "max": 30
     },
     {
       "id": "gor7",
       "cat": "Gorengan & Camilan",
       "name": "Pangsit Goreng Ayam Udang (3 pcs) + mayo",
-      "price": 20000,
+      "price": 29000,
       "max": 25
     },
        {
       "id": "kue1",
       "cat": "Kue",
       "name": "Pia Favourite Oma (3 pcs)",
-      "price": 22000,
+      "price": 29000,
       "max": 20
     },
     {
       "id": "kue2",
       "cat": "Kue",
       "name": "Mini Pao Ayam (3pcs)",
-      "price": 20000,
+      "price": 29000,
       "max": 20
     },
      {
       "id": "Dine1",
       "cat": "Dining",
-      "name": "Nasi Chicken Teriyaki",
-      "price": 32000,
-      "max": 20
-    },
-{
-      "id": "Dine2",
-      "cat": "Dining",
-      "name": "Nasi Beef Teriyaki",
-      "price": 38000,
+      "name": "Konoha Chicken Teriyaki Rice",
+      "price": 39000,
       "max": 20
     },
 {
       "id": "Dine3",
       "cat": "Dining",
-      "name": "Pad Krapaw Chicken",
-      "price": 32000,
+      "name": "Pad Krapaw Thai Chicken",
+      "price": 39000,
       "max": 20
     },
 {
       "id": "Dine4",
       "cat": "Dining",
       "name": "Hoki Hemat 3 But Better",
-      "price": 30000,
-      "max": 20
-    },
-{
-      "id": "Dine5",
-      "cat": "Dining",
-      "name": "Thai Style Omelette with Rice",
-      "price": 24000,
+      "price": 39000,
       "max": 20
     },
 {
       "id": "Dine6",
       "cat": "Dining",
       "name": "Fufu Fried Rice",
-      "price": 28000,
+      "price": 39000,
       "max": 20
     },
  
@@ -141,13 +127,13 @@
       "id": "drink1",
       "cat": "Minuman",
       "name": "Es Teh Tawar",
-      "price": 7000,
+      "price": 10000,
       "max": 50
     },
      {
       "id": "drink2",
       "cat": "Minuman",
-      "name": "Es Teh Manis Solo ",
+      "name": "Es Teh Manis ",
       "price": 15000,
       "max": 50
     },
@@ -155,7 +141,7 @@
       "id": "drink3",
       "cat": "Minuman",
       "name": "Air Mineral",
-      "price": 8000,
+      "price": 10000,
       "max": 50
     },
     {
@@ -169,42 +155,42 @@
       "id": "drink5",
       "cat": "Minuman",
       "name": "Ice Lychee Tea",
-      "price": 23000,
+      "price": 25000,
       "max": 50
     },
     {
       "id": "drink6",
       "cat": "Minuman",
-      "name": "Ice Kopi",
-      "price": 16000,
-      "max": 50
-    },
-    {
-      "id": "drink7",
-      "cat": "Minuman",
-      "name": "Ice Kopi Susu",
+      "name": "Ice Americano",
       "price": 18000,
       "max": 50
     },
     {
       "id": "drink7",
       "cat": "Minuman",
+      "name": "Ice Kopi Susu",
+      "price": 25000,
+      "max": 50
+    },
+    {
+      "id": "drink7",
+      "cat": "Minuman",
       "name": "Ice Matcha Latte",
-      "price": 22000,
+      "price": 25000,
       "max": 50
     },
     {
       "id": "drink8",
       "cat": "Minuman",
       "name": "Ice Cokelat Dankin",
-      "price": 23000,
+      "price": 25000,
       "max": 50
     },
     {
       "id": "drink9",
       "cat": "Minuman",
       "name": "Ice Thai Tea",
-      "price": 20000,
+      "price": 25000,
       "max": 50
     },
     
@@ -212,43 +198,43 @@
       "id": "Picther1",
       "cat": "Pitcher",
       "name": "Ice Tea Picther - Plain",
-      "price": 20000,
+      "price": 30000,
       "max": 50
     },
     {
       "id": "Picther2",
       "cat": "Pitcher",
       "name": "Sweet Ice Tea Pitcher",
-      "price": 28000,
+      "price": 45000,
       "max": 50
     },
     {
       "id": "Picther3",
       "cat": "Pitcher",
       "name": "Ice Lemon Tea Picther",
-      "price": 36000,
+      "price": 50000,
       "max": 50
     }
   ],
   "featured": [
     {
       "name": "Siomay Goreng Si Oma",
-      "price": 28000,
+      "price": 34000,
       "img": "/img/Siomaygoreng.png"
     },
     {
       "name": "Es Teh Tawar Pitcher",
-      "price": 20000,
+      "price": 30000,
       "img": "/img/estehtawar.jpg"
     },
     {
       "name": "Bakso Goreng FuFu",
-      "price": 26000,
+      "price": 29000,
       "img": "/img/baksogoreng.png"
     },
     {
       "name": "Indomie Goreng",
-      "price": 8000,
+      "price": 10000,
       "img": "/img/Indomiegoreng.png"
     }
   ]
