@@ -14,7 +14,7 @@
   },
   "walkinRates": {
     "_help": "Tarif walk-in per jam (dipakai admin & bill otomatis dari QR). Ubah di sini saja.",
-    "gs": 50000
+    "gs": 35000
   },
   "addons": [
     {
