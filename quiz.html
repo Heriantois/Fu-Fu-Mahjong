@@ -1,0 +1,733 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pawsly meal plan quiz</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito+Sans:wght@400;600;700;900&display=swap" rel="stylesheet">
+<style>
+/* Same colours and fonts as order.pawsly.id */
+:root{
+  color-scheme: light;
+  --ink:#12351F; --ink-2:#1D5435; --cream:#FDF1DC; --cream-2:#FAE4C2; --bone:#FFFBF2;
+  --marigold:#E89C2A; --marigold-dk:#C87A14;
+  --line:rgba(18,53,31,.16); --line-strong:rgba(18,53,31,.32);
+  --text:#12351F; --text-soft:#4A6B57; --surface:#FFFBF2; --page:#FDF1DC; --panel:#FAE4C2;
+  --on-ink:#FFFBF2; --good:#1D7A4C; --bad:#A33327; --hero:#E89C2A; --stamp:#FFFBF2;
+  --display:"Baloo 2", ui-rounded, "SF Pro Rounded", "Trebuchet MS", system-ui, sans-serif;
+  --body:"Nunito Sans", ui-rounded, system-ui, -apple-system, sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    color-scheme: dark;
+    --ink:#F2E4C9; --ink-2:#8FD4A8; --cream:#0E2316; --cream-2:#17301F; --bone:#14291B;
+    --marigold:#F0A93C; --marigold-dk:#E89C2A;
+    --line:rgba(242,228,201,.18); --line-strong:rgba(242,228,201,.34);
+    --text:#F2E4C9; --text-soft:#A8BFAF; --surface:#14291B; --page:#0E2316; --panel:#17301F;
+    --on-ink:#0E2316; --good:#6FD39A; --bad:#F08A7E; --hero:#1D5435; --stamp:#14291B;
+  }
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--page);color:var(--text);font-family:var(--body);font-size:17px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--marigold);outline-offset:2px;border-radius:12px}
+
+.wrap{min-height:100vh;min-height:100dvh;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.hero{background:var(--hero);position:relative;overflow:hidden;display:grid;place-items:center;min-height:100%}
+.hero-in{position:relative;width:min(78%,520px);aspect-ratio:1}
+.hero .bowl{position:absolute;inset:6% 6% 6% 6%;width:88%;height:88%;object-fit:contain;filter:drop-shadow(0 18px 24px rgba(0,0,0,.18))}
+.hero .plate{position:absolute;inset:8%;width:84%;height:84%;filter:drop-shadow(0 16px 22px rgba(0,0,0,.16))}
+.hero .bowl{z-index:1}
+.stamp{z-index:2}
+.stamp{position:absolute;right:-4%;bottom:-2%;width:44%;height:auto}
+.stamp .ring{animation:spin 40s linear infinite;transform-origin:100px 100px}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion: reduce){.stamp .ring{animation:none}}
+
+.pane{display:flex;flex-direction:column;min-height:100vh;min-height:100dvh;padding:20px 28px 28px}
+.bar{display:flex;align-items:center;gap:14px;min-height:52px}
+.back{width:46px;height:46px;border-radius:50%;border:2px solid var(--line-strong);background:var(--surface);display:grid;place-items:center;cursor:pointer;flex:0 0 auto}
+.back[hidden]{display:none}
+.prog{flex:1;height:8px;border-radius:99px;background:var(--line);overflow:hidden}
+.s-intro .prog{visibility:hidden}
+.prog i{display:block;height:100%;width:0;background:var(--ink);border-radius:99px;transition:width .3s ease}
+.brand{display:flex;align-items:center;gap:6px;flex:0 0 auto}
+.brand img{height:30px;width:auto}
+.brand b{font-family:var(--display);font-weight:800;font-size:26px;letter-spacing:-.5px;color:var(--ink);line-height:1}
+
+#screen{flex:1;display:flex;flex-direction:column;justify-content:center;width:100%;max-width:520px;margin:0 auto;padding:28px 0 8px;outline:none}
+h1{font-family:var(--display);font-weight:800;color:var(--ink);font-size:clamp(30px,4.6vw,44px);line-height:1.02;letter-spacing:-.5px;margin:0 0 10px}
+.sub{color:var(--text-soft);margin:0 0 22px;max-width:46ch}
+.q2{font-family:var(--display);font-weight:700;font-size:21px;color:var(--ink);margin:24px 0 10px;line-height:1.15}
+
+.free{align-self:flex-start;display:inline-flex;align-items:center;gap:8px;background:var(--good);color:#fff;font-weight:700;font-size:15px;padding:8px 14px 8px 10px;border-radius:12px;margin-bottom:22px}
+@media (prefers-color-scheme: dark){.free{color:#0E2316}}
+
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:58px;border:0;border-radius:99px;background:var(--ink);color:var(--on-ink);font-family:var(--display);font-weight:800;font-size:19px;cursor:pointer;text-decoration:none;padding:0 22px}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.ghost{background:transparent;color:var(--ink);border:2px solid var(--line-strong)}
+.btn.gold{background:var(--marigold);color:#12351F}
+.actions{margin-top:26px;display:grid;gap:10px}
+.err{color:var(--bad);font-weight:700;font-size:15px;min-height:22px;margin:10px 0 0}
+
+.field{display:flex;align-items:center;gap:10px;border:2px solid var(--line-strong);border-radius:18px;background:var(--surface);padding:4px 6px 4px 18px}
+.field:focus-within{border-color:var(--ink)}
+.field input{flex:1;min-width:0;border:0;background:transparent;font-size:22px;font-weight:700;padding:12px 0;outline:none}
+.field .unit{font-family:var(--display);font-weight:700;color:var(--text-soft);padding-right:10px}
+.step{width:46px;height:46px;border-radius:14px;border:0;background:var(--cream-2);font-size:24px;font-weight:900;cursor:pointer;color:var(--ink)}
+.hint{color:var(--text-soft);font-size:15px;margin:10px 2px 0}
+
+.opts{display:grid;gap:10px}
+.opts.two{grid-template-columns:1fr 1fr}
+.opt{display:flex;align-items:center;gap:14px;width:100%;text-align:left;border:2px solid var(--line-strong);background:var(--surface);border-radius:18px;padding:14px 16px;cursor:pointer;min-height:60px}
+.opt b{display:block;font-family:var(--display);font-weight:700;font-size:18px;line-height:1.15;color:var(--ink)}
+.opt small{display:block;color:var(--text-soft);font-size:14px;line-height:1.35;margin-top:2px}
+.opt[aria-pressed="true"]{background:var(--ink);border-color:var(--ink)}
+.opt[aria-pressed="true"] b,.opt[aria-pressed="true"] small{color:var(--on-ink)}
+.opt .tick{margin-left:auto;width:24px;height:24px;border-radius:7px;border:2px solid var(--line-strong);flex:0 0 auto}
+.opt[aria-pressed="true"] .tick{border-color:var(--on-ink);background:var(--on-ink) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6 12.5l4 4 8-9' fill='none' stroke='%23E89C2A' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/18px no-repeat}
+
+.bodies{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.bodies .opt{flex-direction:column;text-align:center;padding:12px 8px 14px;gap:6px}
+.bodies svg{width:100%;max-width:84px;height:auto}
+.bodies svg .dog{fill:var(--ink-2)}
+.bodies .opt[aria-pressed="true"] svg .dog{fill:var(--marigold)}
+.bodies svg .rib{stroke:var(--surface);stroke-width:1.6;stroke-linecap:round}
+.bodies .opt[aria-pressed="true"] svg .rib{stroke:var(--ink)}
+@media (max-width:520px){.bodies{grid-template-columns:1fr 1fr}}
+
+.search{margin-bottom:12px}
+.list{display:grid;gap:8px;max-height:46vh;overflow:auto;padding:2px}
+.chosen{display:flex;align-items:center;gap:10px;background:var(--cream-2);border-radius:16px;padding:12px 14px;margin-bottom:10px}
+.chosen b{font-family:var(--display);font-weight:800;font-size:19px;color:var(--ink)}
+.chosen button{margin-left:auto;border:0;background:transparent;text-decoration:underline;cursor:pointer;color:var(--text-soft);font-weight:700}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+select{width:100%;border:2px solid var(--line-strong);border-radius:18px;background:var(--surface);padding:14px 16px;font-size:20px;font-weight:700}
+
+/* Results */
+.s-result .hero{display:none}
+.s-result.wrap{grid-template-columns:1fr}
+.s-result #screen{max-width:720px;justify-content:flex-start}
+.ticket{position:relative;background:var(--surface);border-radius:22px;padding:26px 24px 22px;border:2px solid var(--line)}
+.ticket::before,.ticket::after{content:"";position:absolute;left:0;right:0;height:10px;background:radial-gradient(circle 5px at 7px 0,var(--page) 98%,transparent) 0 0/14px 10px repeat-x}
+.ticket::before{top:-2px}
+.ticket::after{bottom:-2px;transform:rotate(180deg)}
+.ticket h2{font-family:var(--display);font-weight:700;font-size:20px;margin:0;color:var(--text-soft)}
+.grams{font-family:var(--display);font-weight:800;color:var(--ink);line-height:.9;margin:8px 0 6px;font-size:clamp(64px,14vw,104px);letter-spacing:-2px}
+.grams span{font-size:.3em;letter-spacing:0;margin-left:6px}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;background:var(--cream-2);padding:5px;border-radius:16px;margin:18px 0 8px}
+.seg button{border:0;border-radius:12px;padding:10px 6px;background:transparent;cursor:pointer;font-family:var(--display);font-weight:700;font-size:16px;color:var(--ink)}
+.seg button[aria-checked="true"]{background:var(--ink);color:var(--on-ink)}
+.cut{border:0;border-top:2px dashed var(--line-strong);margin:18px -24px}
+.kv{display:flex;justify-content:space-between;gap:14px;align-items:baseline;margin:6px 0}
+.kv b{font-family:var(--display);font-weight:800;font-size:20px;color:var(--ink);text-align:right;white-space:nowrap}
+.soft{color:var(--text-soft);font-size:15px}
+.block{margin-top:28px}
+.block h3{font-family:var(--display);font-weight:800;font-size:26px;color:var(--ink);margin:0 0 4px;line-height:1.1}
+.ing{display:grid;grid-template-columns:110px 1fr;gap:4px 14px;padding:12px 0;border-bottom:1px solid var(--line)}
+.ing:last-child{border-bottom:0}
+.ing dt{color:var(--text-soft);font-weight:700;font-size:15px}
+.ing dd{margin:0}
+.ing dd b{font-family:var(--display);font-weight:700;font-size:19px;color:var(--ink)}
+.ing dd p{margin:2px 0 0;font-size:15px;color:var(--text-soft)}
+.preset{display:inline-block;background:var(--marigold);color:#12351F;font-weight:900;border-radius:10px;padding:4px 10px;font-size:15px;margin:6px 0 4px}
+.tips{margin:8px 0 0;padding:0;list-style:none;display:grid;gap:10px}
+.tips li{background:var(--surface);border-left:5px solid var(--marigold);border-radius:6px 14px 14px 6px;padding:12px 14px}
+.days{margin:8px 0 0;padding:0;list-style:none;display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.days li{background:var(--surface);border-radius:14px;padding:10px;text-align:center}
+.days b{display:block;font-family:var(--display);font-weight:800;font-size:22px;color:var(--ink)}
+.days span{font-size:13px;color:var(--text-soft)}
+.fine{font-size:13px;color:var(--text-soft);margin-top:26px}
+
+@media (max-width:860px){
+  .wrap{grid-template-columns:1fr}
+  .hero{min-height:0;height:38vh;max-height:340px}
+  .hero-in{width:min(64%,300px)}
+  .wrap:not(.s-intro) .hero{display:none}
+  .pane{padding:14px 18px 22px}
+  #screen{justify-content:flex-start;padding-top:22px}
+  .s-intro .pane{min-height:0}
+  .s-intro #screen{padding-top:8px}
+  .hero{height:34vh}
+  .opts.two{grid-template-columns:1fr}
+  .days{grid-template-columns:1fr 1fr}
+  .kv b{font-size:18px}
+  .ing{grid-template-columns:88px 1fr}
+}
+</style>
+</head>
+<body>
+<div class="wrap s-intro" id="wrap">
+  <aside class="hero" aria-hidden="true">
+    <div class="hero-in">
+      <svg class="plate" viewBox="0 0 200 200" aria-hidden="true">
+        <circle cx="100" cy="100" r="96" fill="var(--bone)"/><circle cx="100" cy="100" r="78" fill="#F3D9A8"/>
+        <g>
+          <rect x="62" y="58" width="26" height="22" rx="5" fill="#C2342B" transform="rotate(-12 75 69)"/>
+          <rect x="104" y="52" width="24" height="22" rx="5" fill="#8E201A" transform="rotate(18 116 63)"/>
+          <rect x="120" y="96" width="26" height="24" rx="5" fill="#C2342B" transform="rotate(-8 133 108)"/>
+          <rect x="70" y="116" width="24" height="22" rx="5" fill="#A82E2E" transform="rotate(10 82 127)"/>
+          <circle cx="98" cy="96" r="13" fill="#DD6B20"/><circle cx="140" cy="72" r="9" fill="#E8731F"/>
+          <circle cx="58" cy="98" r="10" fill="#E89A2A"/><circle cx="112" cy="138" r="11" fill="#DD6B20"/>
+          <circle cx="84" cy="88" r="8" fill="#3F7A2E"/><circle cx="128" cy="126" r="9" fill="#3F7A2E"/>
+          <circle cx="66" cy="76" r="5" fill="#8FBE4A"/><circle cx="96" cy="120" r="6" fill="#8FBE4A"/><circle cx="146" cy="92" r="5" fill="#8FBE4A"/>
+          <circle cx="110" cy="80" r="4" fill="#EFE3C8"/><circle cx="76" cy="104" r="4" fill="#EFE3C8"/><circle cx="134" cy="142" r="4" fill="#EFE3C8"/>
+        </g>
+      </svg>
+      <img class="bowl" src="bowl.png" alt="" onerror="this.remove()">
+      <svg class="stamp" viewBox="0 0 200 200">
+        <circle cx="100" cy="100" r="96" fill="var(--stamp)"/>
+        <g class="ring">
+          <defs><path id="circ" d="M100,100 m-80,0 a80,80 0 1,1 160,0 a80,80 0 1,1 -160,0"/></defs>
+          <text font-family="Baloo 2, sans-serif" font-weight="800" font-size="14" fill="var(--ink)" textLength="496" lengthAdjust="spacing">
+            <textPath href="#circ">Portions sized for your dog ★ Ready in 3 minutes ★</textPath>
+          </text>
+        </g>
+        <text x="100" y="96" text-anchor="middle" font-family="Baloo 2, sans-serif" font-weight="800" font-size="25" fill="var(--ink)">Meal plan</text>
+        <text x="100" y="124" text-anchor="middle" font-family="Baloo 2, sans-serif" font-weight="800" font-size="25" fill="var(--marigold-dk)">quiz</text>
+      </svg>
+    </div>
+  </aside>
+  <main class="pane">
+    <div class="bar">
+      <button class="back" id="back" aria-label="Previous question" hidden>
+        <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <div class="prog" role="progressbar" aria-label="Quiz progress" aria-valuemin="0" aria-valuemax="100" id="prog"><i id="progFill"></i></div>
+      <span class="brand"><img src="Logo.png" alt="Pawsly" onerror="this.replaceWith(Object.assign(document.createElement('b'),{textContent:'pawsly'}))"></span>
+    </div>
+    <section id="screen" tabindex="-1" aria-live="polite"></section>
+  </main>
+</div>
+
+<script>
+/* ============================================================
+   SETTINGS — edit these four things.
+   ============================================================ */
+const CONFIG = {
+  // PLACEHOLDER: calories per gram of a cooked Pawsly bowl. Most gently cooked
+  // dog food sits around 1.2–1.6 kcal/g. Get a lab analysis and put the real number here.
+  KCAL_PER_GRAM: 1.4,
+  // Bowl prices match the order page. GRAMS ARE PLACEHOLDERS: weigh a bowl and fix them.
+  BOWLS: [
+    { id:'S', name:'Small',  grams:150, price:26000 },
+    { id:'M', name:'Medium', grams:350, price:57500 },
+    { id:'L', name:'Large',  grams:700, price:115000 },
+  ],
+  ORDER_URL: 'https://order.pawsly.id/?v=PAWS',
+  // Your WhatsApp number in international format without "+", e.g. '6281234567890'.
+  // Leave empty and the customer picks who to send the plan to.
+  WHATSAPP: '',
+};
+
+/* Breeds commonly kept in Indonesia. size drives growth age and senior age.
+   min/max = typical adult weight in kg. Flags pick the tips shown on the plan. */
+const BREEDS = [
+  { id:'kampung',  name:'Kampung / Indonesian mix', size:null,   min:8,   max:20, flags:['kampung'], askSize:true },
+  { id:'kintamani',name:'Kintamani (Bali dog)',     size:'medium',min:12,  max:18, flags:['kintamani','heavyCoat','active'] },
+  { id:'minpin',   name:'Miniature Pinscher',       size:'toy',  min:3.5, max:5,  flags:['active','dental'] },
+  { id:'pom',      name:'Pomeranian',               size:'toy',  min:1.5, max:3.5,flags:['heavyCoat','dental','tiny'] },
+  { id:'shihtzu',  name:'Shih Tzu',                 size:'small',min:4,   max:7.5,flags:['brachy','obesity','tears'] },
+  { id:'chihuahua',name:'Chihuahua',                size:'toy',  min:1.5, max:3,  flags:['dental','tiny'] },
+  { id:'maltese',  name:'Maltese',                  size:'toy',  min:2,   max:4,  flags:['tears','dental','tiny'] },
+  { id:'poodletoy',name:'Poodle (toy)',             size:'toy',  min:2,   max:4,  flags:['tears','dental','tiny'] },
+  { id:'poodlemini',name:'Poodle (miniature)',      size:'small',min:5,   max:8,  flags:['tears','dental'] },
+  { id:'yorkie',   name:'Yorkshire Terrier',        size:'toy',  min:2,   max:3.5,flags:['dental','tiny','tummy'] },
+  { id:'bichon',   name:'Bichon Frise',             size:'small',min:5,   max:8,  flags:['tears','skin'] },
+  { id:'pug',      name:'Pug',                      size:'small',min:6,   max:8,  flags:['brachy','obesity'] },
+  { id:'frenchie', name:'French Bulldog',           size:'small',min:8,   max:13, flags:['brachy','skin','tummy'] },
+  { id:'schnauzer',name:'Miniature Schnauzer',      size:'small',min:5,   max:9,  flags:['lowFat'] },
+  { id:'dachshund',name:'Dachshund',                size:'small',min:5,   max:12, flags:['back','obesity'] },
+  { id:'jrt',      name:'Jack Russell Terrier',     size:'small',min:6,   max:8,  flags:['active'] },
+  { id:'beagle',   name:'Beagle',                   size:'medium',min:9,  max:14, flags:['obesity'] },
+  { id:'corgi',    name:'Corgi',                    size:'medium',min:10, max:14, flags:['back','obesity'] },
+  { id:'cocker',   name:'Cocker Spaniel',           size:'medium',min:11, max:14, flags:['obesity','skin'] },
+  { id:'shiba',    name:'Shiba Inu',                size:'medium',min:8,  max:11, flags:['heavyCoat','skin'] },
+  { id:'bordercollie',name:'Border Collie',         size:'medium',min:14, max:20, flags:['active'] },
+  { id:'husky',    name:'Siberian Husky',           size:'medium',min:16, max:27, flags:['heavyCoat','active','efficient'] },
+  { id:'bully',    name:'American Bully / Pitbull', size:'medium',min:14, max:30, flags:['skin'] },
+  { id:'labrador', name:'Labrador Retriever',       size:'large',min:25,  max:36, flags:['obesity','joints'] },
+  { id:'golden',   name:'Golden Retriever',         size:'large',min:25,  max:34, flags:['obesity','joints','heavyCoat','skin'] },
+  { id:'samoyed',  name:'Samoyed',                  size:'large',min:16,  max:30, flags:['heavyCoat','joints'] },
+  { id:'chow',     name:'Chow Chow',                size:'large',min:20,  max:32, flags:['heavyCoat','skin'] },
+  { id:'gsd',      name:'German Shepherd',          size:'large',min:22,  max:40, flags:['joints','tummy'] },
+  { id:'doberman', name:'Doberman',                 size:'large',min:27,  max:45, flags:['joints','active'] },
+  { id:'malamute', name:'Alaskan Malamute',         size:'large',min:34,  max:39, flags:['heavyCoat','joints'] },
+  { id:'rottweiler',name:'Rottweiler',              size:'large',min:35,  max:60, flags:['joints','obesity'] },
+  { id:'greatdane',name:'Great Dane',               size:'giant',min:45,  max:80, flags:['joints'] },
+  { id:'other',    name:'Mixed breed or not sure',  size:null,   min:null,max:null,flags:[], askSize:true },
+];
+const COMMON = ['kampung','pom','shihtzu','minpin','golden','husky','poodletoy','other'];
+
+const SIZES = [
+  { id:'toy',    label:'Toy',    range:'under 5 kg' },
+  { id:'small',  label:'Small',  range:'5 to 10 kg' },
+  { id:'medium', label:'Medium', range:'10 to 25 kg' },
+  { id:'large',  label:'Large',  range:'25 to 45 kg' },
+  { id:'giant',  label:'Giant',  range:'over 45 kg' },
+];
+const GROW_MONTHS  = { toy:10, small:10, medium:12, large:15, giant:18 };   // puppy until
+const SENIOR_YEARS = { toy:10, small:10, medium:8,  large:7,  giant:6 };
+
+const TIPS = {
+  kampung:   'Kampung dogs are usually hardy and naturally lean. Trust the body shape more than the scale when you adjust portions.',
+  kintamani: 'The Kintamani is Indonesia\u2019s own breed from Bali: athletic, alert and thick-coated. Give the bigger meal after the evening walk, once it has cooled down.',
+  heavyCoat: 'A thick double coat holds heat. In Indonesian weather, walk early morning or after sunset, keep water out all day, and don\u2019t worry if appetite drops a little at midday.',
+  brachy:    'Short-nosed dogs overheat fast and gain weight easily. Keep them on the lean side and keep walks short when it\u2019s hot.',
+  obesity:   'This breed tends to put on weight. Weigh each meal instead of scooping by eye, and count treats as part of the day.',
+  joints:    'Big dogs put a lot of load on their hips and elbows. Staying lean is the single best thing you can do for their joints.',
+  back:      'A long back is strained by extra weight, so keep them slim. You should feel the ribs easily under a light layer.',
+  dental:    'Small mouths crowd teeth. Brush a few times a week and ask your vet to check teeth at each visit.',
+  tiny:      'Tiny puppies can get low blood sugar if they go too long without food, so feed small meals often.',
+  tears:     'Tear stains are common in this breed. Wipe under the eyes daily and keep the face hair trimmed.',
+  skin:      'This breed is prone to itchy skin. If scratching starts, keep to one protein for 6 to 8 weeks to see whether food is the cause.',
+  tummy:     'This breed can have a sensitive stomach. Change food slowly and keep the recipe the same once it agrees with them.',
+  lowFat:    'Schnauzers can react badly to fatty food, so we keep this bowl lean and skip pork and lamb.',
+  active:    'A high-energy breed. On days with long runs or play, they may need a bit more: watch their waist and adjust.',
+  efficient: 'Huskies often need fewer calories than their size suggests. Use the body shape check, not the bag on the shelf.',
+};
+
+/* Ingredients and recipes copied from order.pawsly.id so the plan matches the menu. */
+const ING = {
+  ayam:'Chicken', sapi:'Beef', pork:'Pork', lamb:'Lamb', rabbit:'Rabbit',
+  liver_ayam:'Chicken Liver', liver_sapi:'Beef Liver',
+  wortel:'Carrot', brokoli:'Broccoli', edamame:'Edamame', kembang_kol:'Cauliflower',
+  oats:'Rolled Oats', labu:'Pumpkin', ubi_madu:'Sweet Potato', ubi_ungu:'Purple Yam',
+};
+const PRESETS = {
+  tears:{ title:'Bye Bye Tears Stain', protein:['ayam'], organ:['liver_ayam'], veg:['wortel'], carb:['oats'], addons:[] },
+  bulu: { title:'Bye Bye Bulu Rontok', protein:['sapi'], organ:['liver_sapi'], veg:['wortel'], carb:['ubi_madu'], addons:['potion'] },
+};
+
+const HEALTH = [
+  { id:'weight', label:'Weight control',        note:'Lose or keep off a few kilos' },
+  { id:'tummy',  label:'Sensitive tummy',       note:'Loose stools, gas or vomiting' },
+  { id:'skin',   label:'Itchy skin',            note:'Scratching, licking paws, red skin' },
+  { id:'coat',   label:'Shedding or dull coat', note:'Bulu rontok' },
+  { id:'tears',  label:'Tear stains',           note:'Brown marks under the eyes' },
+  { id:'joints', label:'Stiff joints',          note:'Slow to get up, older dog' },
+  { id:'picky',  label:'Picky eater',           note:'Leaves food in the bowl' },
+];
+const PROTEINS = ['ayam','sapi','pork','lamb','rabbit'];
+const BODY = [
+  { id:'skinny', label:'Skinny',       note:'Ribs and hip bones easy to see', c:15, w:8,  h:13, ribs:true },
+  { id:'ideal',  label:'Just right',   note:'Clear waist, ribs easy to feel', c:18, w:12, h:16 },
+  { id:'plump',  label:'A bit chubby', note:'Waist hard to see',              c:21, w:19, h:19 },
+  { id:'chubby', label:'Chubby',       note:'No waist, ribs hard to feel',    c:24, w:26, h:23 },
+];
+const ACTIVITY = [
+  { id:'low',  label:'Mostly lounging',  note:'Short walks or none', f:0.85 },
+  { id:'mod',  label:'Daily walks',      note:'About 30 to 60 minutes a day', f:1 },
+  { id:'high', label:'Very active',      note:'Over an hour, runs or plays hard', f:1.15 },
+  { id:'work', label:'Working or sporty',note:'Guarding, agility or running most of the day', f:1.35 },
+];
+const FOOD = [
+  { id:'kibble', label:'Dry kibble' },
+  { id:'wet',    label:'Wet or canned food' },
+  { id:'mix',    label:'Kibble plus home food' },
+  { id:'home',   label:'Home-cooked' },
+  { id:'fresh',  label:'Fresh or raw' },
+];
+
+/* ============================================================ */
+const A = { name:'', breed:null, size:null, sex:null, fixed:null, years:'', months:'', weight:'', body:null, activity:null, health:[], avoid:[], food:null };
+const STEPS = ['intro','name','breed','sex','age','weight','body','activity','health','avoid','food','result'];
+let step = 0, planType = 'full', breedQuery = '', error = '';
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const rp = n => 'Rp ' + Math.round(n).toLocaleString('en-US');
+const N = () => esc(A.name.trim() || 'your dog');
+const breed = () => BREEDS.find(b => b.id === A.breed) || null;
+const sizeOf = () => (breed() && breed().size) || A.size || 'medium';
+const ageMonths = () => (parseInt(A.years || 0, 10) * 12) + parseInt(A.months || 0, 10);
+const pr = (on) => `aria-pressed="${on ? 'true' : 'false'}"`;
+
+/* ---------- Calculation ---------- */
+function stage(){
+  const m = ageMonths(), s = sizeOf();
+  if(m < GROW_MONTHS[s]) return 'puppy';
+  if(m >= SENIOR_YEARS[s] * 12) return 'senior';
+  return 'adult';
+}
+function calc(){
+  const w = parseFloat(A.weight), m = ageMonths(), st = stage();
+  const bodyAdj = { skinny:1.1, ideal:1, plump:0.92, chubby:0.85 }[A.body] || 1;
+  const calcW = st === 'puppy' ? w : w * bodyAdj;           // adults are fed for their ideal weight
+  const rer = 70 * Math.pow(calcW, 0.75);                    // resting energy (kcal/day)
+  let f;
+  if(st === 'puppy') f = m < 4 ? 3.0 : 2.0;
+  else if(st === 'senior') f = 1.4;
+  else f = A.fixed === 'yes' ? 1.6 : 1.8;
+  if(st !== 'puppy'){
+    f *= (ACTIVITY.find(a => a.id === A.activity) || ACTIVITY[1]).f;
+    if(A.body === 'plump') f *= 0.9;
+    if(A.body === 'chubby') f = Math.min(f, 1.1);
+  } else if(A.body === 'chubby') f *= 0.9;
+  const kcal = Math.max(80, Math.round(rer * f / 5) * 5);
+  const grams = Math.max(40, Math.round(kcal / CONFIG.KCAL_PER_GRAM / 10) * 10);
+  const tiny = (breed() && breed().flags.includes('tiny')) || sizeOf() === 'toy';
+  const meals = m < 6 ? (tiny ? 4 : 3) : st === 'puppy' ? 3 : 2;
+  return { kcal, grams, meals, st, idealW: Math.round(w * bodyAdj * 10) / 10 };
+}
+const PLAN = {
+  full:  { label:'Full plan', share:1,    note:'Pawsly is the whole diet.' },
+  half:  { label:'Half plan', share:0.5,  note:'Half Pawsly, half their current food. Halve the old food too.' },
+  topper:{ label:'Topper',    share:0.25, note:'A quarter Pawsly on top of their usual food. Cut the old food by a quarter.' },
+};
+function bowlCombo(g){
+  const [S, M, L] = CONFIG.BOWLS;
+  let best = null;
+  for(let l = 0; l <= 5; l++) for(let m = 0; m <= 3; m++) for(let s = 0; s <= 3; s++){
+    const sum = l * L.grams + m * M.grams + s * S.grams;
+    if(!sum || sum < g * 0.92) continue;
+    const n = l + m + s, price = l * L.price + m * M.price + s * S.price;
+    if(!best || sum < best.sum || (sum === best.sum && n < best.n)) best = { l, m, s, sum, n, price };
+  }
+  if(!best) return null;
+  const parts = [];
+  if(best.l) parts.push(`${best.l} ${L.name}`);
+  if(best.m) parts.push(`${best.m} ${M.name}`);
+  if(best.s) parts.push(`${best.s} ${S.name}`);
+  return { text: parts.join(' + '), price: best.price, sum: best.sum };
+}
+
+/* ---------- Recipe pick ---------- */
+function pickBowl(c){
+  const h = new Set(A.health), avoid = new Set(A.avoid), fl = (breed() || {}).flags || [];
+  const lean  = h.has('weight') || A.body === 'plump' || A.body === 'chubby';
+  const light = lean || h.has('tummy') || fl.includes('lowFat');
+  const ok = id => !avoid.has(id);
+  const fromPreset = (key, why) => {
+    const p = PRESETS[key];
+    return { preset:p.title, protein:p.protein, organ:p.organ, veg:p.veg, carb:p.carb, addons:p.addons,
+      why:{ protein:why, organ:'Liver adds iron, vitamin A and a smell dogs love.', veg:'Carrot adds fibre and beta-carotene.', carb: key === 'tears' ? 'Oats are gentle and filling.' : 'Sweet potato gives slow, steady energy.' } };
+  };
+  if(h.has('tears') && ok('ayam') && !h.has('skin')) return fromPreset('tears', 'Pawsly\u2019s recipe for dogs with tear stains, built on lean chicken.');
+  if(h.has('coat') && ok('sapi') && !light && !h.has('skin')) return fromPreset('bulu', 'Pawsly\u2019s recipe for shedding, with beef plus Pawsly Potion fish oil for the coat.');
+
+  let order = ['ayam','sapi','rabbit','lamb','pork'], whyP = 'A lean, easy-to-digest everyday protein.';
+  if(h.has('skin')){ order = ['rabbit','lamb','pork','sapi','ayam']; whyP = 'A less common protein, so it\u2019s easier to see whether food is behind the itching.'; }
+  else if(light){ order = ['rabbit','ayam','sapi','lamb','pork']; whyP = lean ? 'Lean protein keeps them full on fewer calories.' : 'Lean protein is easier on sensitive stomachs.'; }
+  else if(h.has('picky')){ order = ['sapi','lamb','ayam','rabbit','pork']; whyP = 'Rich, meaty flavour that tempts fussy eaters.'; }
+  let cand = order.filter(ok);
+  if(light){ const lean2 = cand.filter(p => p !== 'pork' && p !== 'lamb'); if(lean2.length) cand = lean2; }
+  if(!cand.length) return { none:true };
+  const protein = [cand[0]];
+  const pName = ING[cand[0]];
+  if(!order.slice(0, 1).every(ok) && cand[0] !== order[0]) whyP += ` We skipped ${A.avoid.map(a => ING[a]).join(', ')} as you asked.`;
+
+  let organ = [], whyO;
+  if(h.has('skin')){ whyO = 'Left out for now, so the bowl stays on one protein while you check for allergies.'; }
+  else if(cand[0] === 'sapi' && ok('sapi')) { organ = ['liver_sapi']; }
+  else if(ok('ayam')) organ = ['liver_ayam'];
+  else if(ok('sapi')) organ = ['liver_sapi'];
+  if(organ.length) whyO = h.has('picky') ? 'Liver is the most aromatic part of the bowl, great for picky eaters.' : 'A little liver adds iron and vitamin A.';
+  else if(!whyO) whyO = 'Left out because both livers come from proteins you asked to avoid.';
+
+  let veg = ['wortel','brokoli'], whyV = 'Carrot and broccoli add fibre and vitamins.';
+  if(h.has('tummy') || h.has('skin')){ veg = ['wortel']; whyV = 'One gentle vegetable keeps the recipe simple and easy on the stomach.'; }
+  else if(lean){ veg = ['brokoli','kembang_kol']; whyV = 'Low-calorie vegetables add volume so the bowl still feels big.'; }
+
+  let carb = ['ubi_madu'], whyC = 'Sweet potato gives slow, steady energy.';
+  if(lean){ carb = ['labu']; whyC = 'Pumpkin is filling and low in calories.'; }
+  else if(h.has('tummy')){ carb = ['labu']; whyC = 'Pumpkin\u2019s fibre helps firm up stools.'; }
+  else if(c.st === 'senior'){ carb = ['oats']; whyC = 'Oats are gentle and easy to digest for older dogs.'; }
+
+  const addons = (h.has('skin') || h.has('coat') || h.has('joints')) ? ['potion'] : [];
+  return { protein, organ, veg, carb, addons, why:{ protein:whyP, organ:whyO, veg:whyV, carb:whyC } };
+}
+
+/* ---------- Screens ---------- */
+const V = {
+  intro: () => `
+    <span class="free"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>Free personal portion plan</span>
+    <h1>Let\u2019s get to know your dog</h1>
+    <p class="sub">Every dog eats differently. Answer 10 quick questions and we\u2019ll size their bowl, choose the ingredients and show what a day of Pawsly costs.</p>
+    <div class="actions"><button class="btn" data-go="next">Start the 3-minute quiz</button></div>`,
+
+  name: () => `
+    <h1>What\u2019s your dog\u2019s name?</h1>
+    <p class="sub">We\u2019ll use it to build their plan.</p>
+    <label class="field"><input id="in-name" autocomplete="off" maxlength="30" placeholder="e.g. Mochi" value="${esc(A.name)}" aria-label="Dog's name"></label>
+    ${foot()}`,
+
+  breed: () => {
+    const b = breed();
+    if(b) return `
+      <h1>What breed is ${N()}?</h1>
+      <div class="chosen"><b>${esc(b.name)}</b><button data-act="clearBreed">Change</button></div>
+      ${b.askSize ? `<p class="q2">How big is ${N()} as an adult?</p>
+        <div class="opts">${SIZES.map(s => `<button class="opt" data-size="${s.id}" ${pr(A.size === s.id)}><span><b>${s.label}</b><small>${s.range}</small></span></button>`).join('')}</div>` : ''}
+      ${foot()}`;
+    return `
+      <h1>What breed is ${N()}?</h1>
+      <p class="sub">Search, or pick one below. Mixed or not sure is fine.</p>
+      <label class="field search"><input id="in-breed" autocomplete="off" placeholder="Search breeds" value="${esc(breedQuery)}" aria-label="Search breeds"></label>
+      <div class="list" id="breedList" role="listbox" aria-label="Breeds">${breedList()}</div>
+      ${foot(true)}`;
+  },
+
+  sex: () => `
+    <h1>Is ${N()} a boy or a girl?</h1>
+    <div class="opts two">
+      <button class="opt" data-sex="m" ${pr(A.sex === 'm')}><span><b>Boy</b></span></button>
+      <button class="opt" data-sex="f" ${pr(A.sex === 'f')}><span><b>Girl</b></span></button>
+    </div>
+    ${A.sex ? `<p class="q2">${A.sex === 'm' ? 'Is he neutered?' : 'Is she spayed?'}</p>
+    <div class="opts two">
+      <button class="opt" data-fixed="yes" ${pr(A.fixed === 'yes')}><span><b>Yes</b></span></button>
+      <button class="opt" data-fixed="no" ${pr(A.fixed === 'no')}><span><b>No</b></span></button>
+    </div>` : ''}
+    ${foot()}`,
+
+  age: () => `
+    <h1>How old is ${N()}?</h1>
+    <p class="sub">A rough guess is fine for rescues.</p>
+    <div class="row2">
+      <label><span class="hint">Years</span><select id="in-years">${opts(0, 20, A.years)}</select></label>
+      <label><span class="hint">Months</span><select id="in-months">${opts(0, 11, A.months)}</select></label>
+    </div>
+    ${foot()}`,
+
+  weight: () => {
+    const b = breed();
+    const typ = b && b.min ? `A typical adult ${esc(b.name)} weighs ${b.min} to ${b.max} kg.` : '';
+    return `
+    <h1>How much does ${N()} weigh?</h1>
+    <p class="sub">Not sure? Step on the scale holding ${N()}, then subtract your own weight.</p>
+    <div class="field">
+      <button class="step" data-act="wDown" aria-label="Less">\u2212</button>
+      <input id="in-weight" inputmode="decimal" placeholder="0" value="${esc(A.weight)}" aria-label="Weight in kilograms">
+      <span class="unit">kg</span>
+      <button class="step" data-act="wUp" aria-label="More">+</button>
+    </div>
+    ${typ ? `<p class="hint">${typ}</p>` : ''}
+    ${foot()}`;
+  },
+
+  body: () => `
+    <h1>Which looks most like ${N()} from above?</h1>
+    <p class="sub">Look down at their back while they stand.</p>
+    <div class="bodies">${BODY.map(o => `<button class="opt" data-body="${o.id}" ${pr(A.body === o.id)}>${dogSVG(o)}<span><b>${o.label}</b><small>${o.note}</small></span></button>`).join('')}</div>
+    ${foot(true)}`,
+
+  activity: () => `
+    <h1>How active is ${N()} on a normal day?</h1>
+    <div class="opts">${ACTIVITY.map(o => `<button class="opt" data-activity="${o.id}" ${pr(A.activity === o.id)}><span><b>${o.label}</b><small>${o.note}</small></span></button>`).join('')}</div>
+    ${foot(true)}`,
+
+  health: () => `
+    <h1>Anything you\u2019d like ${N()}\u2019s food to help with?</h1>
+    <p class="sub">Pick any that apply, or skip.</p>
+    <div class="opts">${HEALTH.map(o => `<button class="opt" data-health="${o.id}" ${pr(A.health.includes(o.id))}><span><b>${o.label}</b><small>${o.note}</small></span><i class="tick"></i></button>`).join('')}</div>
+    ${foot(false, A.health.length ? 'Continue' : 'Skip')}`,
+
+  avoid: () => `
+    <h1>Any protein ${N()} should avoid?</h1>
+    <p class="sub">Allergies, religion or simply dislikes. Pick all that apply.</p>
+    <div class="opts two">${PROTEINS.map(p => `<button class="opt" data-avoid="${p}" ${pr(A.avoid.includes(p))}><span><b>${ING[p]}</b></span><i class="tick"></i></button>`).join('')}</div>
+    ${foot(false, A.avoid.length ? 'Continue' : 'No, all are fine')}`,
+
+  food: () => `
+    <h1>What does ${N()} eat now?</h1>
+    <p class="sub">So we can plan a gentle switch.</p>
+    <div class="opts">${FOOD.map(o => `<button class="opt" data-food="${o.id}" ${pr(A.food === o.id)}><span><b>${o.label}</b></span></button>`).join('')}</div>
+    ${foot(true)}`,
+
+  result: () => {
+    const c = calc(), p = PLAN[planType], g = Math.max(40, Math.round(c.grams * p.share / 10) * 10);
+    const k = Math.round(c.kcal * p.share), per = Math.round(g / c.meals / 5) * 5;
+    const combo = bowlCombo(g), bowl = pickBowl(c), b = breed();
+    const flags = b ? b.flags : [];
+    const tips = [...new Set(flags)].map(f => TIPS[f]).filter(Boolean);
+    if(c.st === 'puppy' && (sizeOf() === 'large' || sizeOf() === 'giant')) tips.unshift('Large-breed puppies need carefully balanced calcium while they grow. Ask your vet before making fresh food their only diet.');
+    else if(c.st === 'puppy') tips.unshift('Puppies grow fast. Ask your vet before making fresh food their only diet, and redo this quiz every month.');
+    if(c.st === 'senior') tips.push('Older dogs do best with steady weight and easy-to-chew food. Weigh them monthly.');
+    if(A.body === 'plump' || A.body === 'chubby') tips.unshift(`We sized this plan for about ${c.idealW} kg, a healthier weight for ${N()}. Aim to lose no more than 1 to 2% of body weight a week.`);
+    if(A.body === 'skinny') tips.unshift(`We sized this plan for about ${c.idealW} kg so ${N()} can gain slowly. If ribs stay very visible after a month, see your vet.`);
+    const switchFrom = ['kibble','wet','mix'].includes(A.food);
+    const row = (t, ids, why) => `<div class="ing"><dt>${t}</dt><dd><b>${ids.length ? ids.map(i => ING[i]).join(' + ') : 'None'}</b><p>${why}</p></dd></div>`;
+    return `
+      <div class="ticket">
+        <h2>Daily plan for ${N()}</h2>
+        <div class="grams">${g.toLocaleString('en-US')}<span>g a day</span></div>
+        <p class="soft" style="margin:0">About ${k.toLocaleString('en-US')} kcal, in ${c.meals} meals of about ${per} g.</p>
+        <div class="seg" role="radiogroup" aria-label="Plan type">
+          ${Object.entries(PLAN).map(([id, x]) => `<button role="radio" data-plan="${id}" aria-checked="${planType === id}">${x.label}</button>`).join('')}
+        </div>
+        <p class="soft" style="margin:0">${p.note}</p>
+        <hr class="cut">
+        <div class="kv"><span>Bowls per day</span><b>${combo ? combo.text : 'Ask us'}</b></div>
+        <div class="kv"><span>Cost per day</span><b>${combo ? rp(combo.price) : '-'}</b></div>
+        <div class="kv"><span>Treat limit</span><b>${Math.round(c.kcal * 0.1).toLocaleString('en-US')} kcal</b></div>
+      </div>
+
+      <div class="block">
+        <h3>${N()}\u2019s bowl</h3>
+        ${bowl.none ? `<p>${N()} avoids every protein we cook, so message us and we\u2019ll suggest something.</p>` : `
+        ${bowl.preset ? `<span class="preset">Pawsly recipe: ${bowl.preset}</span>` : '<p class="soft" style="margin:0 0 4px">Build this on the order page.</p>'}
+        <dl style="margin:0">
+          ${row('Protein', bowl.protein, bowl.why.protein)}
+          ${row('Organ', bowl.organ, bowl.why.organ)}
+          ${row('Vegetables', bowl.veg, bowl.why.veg)}
+          ${row('Carbs', bowl.carb, bowl.why.carb)}
+          ${bowl.addons.length ? `<div class="ing"><dt>Add-on</dt><dd><b>Pawsly Potion</b><p>Fish oil for skin, coat and joints.</p></dd></div>` : ''}
+        </dl>`}
+      </div>
+
+      ${tips.length ? `<div class="block"><h3>Good to know${b && !b.askSize ? ` for a ${esc(b.name)}` : ''}</h3><ul class="tips">${tips.map(t => `<li>${t}</li>`).join('')}</ul></div>` : ''}
+
+      ${switchFrom ? `<div class="block"><h3>Switching over a week</h3>
+        <p class="soft" style="margin:0">Mix Pawsly into the old food so ${N()}\u2019s stomach can adjust.</p>
+        <ol class="days">
+          <li><b>25%</b><span>Days 1 and 2</span></li><li><b>50%</b><span>Days 3 and 4</span></li>
+          <li><b>75%</b><span>Days 5 and 6</span></li><li><b>100%</b><span>Day 7</span></li>
+        </ol></div>` : ''}
+
+      <div class="block"><h3>Check and adjust</h3>
+        <p style="margin:6px 0 0">Weigh ${N()} every two weeks. If they\u2019re gaining when they shouldn\u2019t, give 10% less. If they\u2019re losing, give 10% more.</p>
+      </div>
+
+      <div class="actions">
+        <a class="btn" href="${esc(CONFIG.ORDER_URL)}">Order ${N()}\u2019s bowl</a>
+        <a class="btn gold" target="_blank" rel="noopener" href="${waLink(c, g, combo, bowl)}">Send this plan on WhatsApp</a>
+        <button class="btn ghost" data-act="restart">Start again</button>
+      </div>
+      <p class="fine">This plan is an estimate from standard feeding formulas. Every dog is different, so adjust by weight and body shape. For puppies, pregnant or nursing dogs, or dogs with a medical condition, check with your vet first.</p>`;
+  },
+};
+
+function foot(noNext, label){
+  return `<p class="err" role="alert">${error ? esc(error) : ''}</p>${noNext ? '' : `<div class="actions"><button class="btn" data-go="next">${label || 'Continue'}</button></div>`}`;
+}
+function opts(a, b, v){
+  let h = '<option value="">-</option>';
+  for(let i = a; i <= b; i++) h += `<option value="${i}" ${String(v) === String(i) ? 'selected' : ''}>${i}</option>`;
+  return h;
+}
+function breedList(){
+  const q = breedQuery.trim().toLowerCase();
+  const list = q ? BREEDS.filter(b => b.name.toLowerCase().includes(q)) : COMMON.map(id => BREEDS.find(b => b.id === id));
+  if(!list.length) return `<button class="opt" data-breed="other"><span><b>Not listed? Choose mixed or not sure</b><small>We\u2019ll ask for size instead</small></span></button>`;
+  return list.map(b => `<button class="opt" role="option" data-breed="${b.id}"><span><b>${esc(b.name)}</b>${b.min ? `<small>${b.min} to ${b.max} kg as an adult</small>` : '<small>We\u2019ll ask for size</small>'}</span></button>`).join('');
+}
+function dogSVG(o){
+  const L = 40 - o.c, R = 40 + o.c, wl = 40 - o.w, wr = 40 + o.w, hl = 40 - o.h, hr = 40 + o.h;
+  const body = `M33,30 Q${L},33 ${L},47 Q${L},62 ${wl},72 Q${hl},81 ${hl},93 Q${hl},106 40,108 Q${hr},106 ${hr},93 Q${hr},81 ${wr},72 Q${R},62 ${R},47 Q${R},33 47,30 Z`;
+  const ribs = o.ribs ? [50, 56, 62].map(y => `<path class="rib" d="M${40 - o.c + 5},${y} q${o.c - 5},4 ${(o.c - 5) * 2},0"/>`).join('') : '';
+  return `<svg viewBox="0 0 80 122" aria-hidden="true"><g class="dog">
+    <ellipse cx="40" cy="18" rx="11" ry="13"/><ellipse cx="28" cy="12" rx="5" ry="9" transform="rotate(-20 28 12)"/>
+    <ellipse cx="52" cy="12" rx="5" ry="9" transform="rotate(20 52 12)"/>
+    <ellipse cx="${L + 1}" cy="42" rx="4.5" ry="7"/><ellipse cx="${R - 1}" cy="42" rx="4.5" ry="7"/>
+    <ellipse cx="${hl + 1}" cy="100" rx="4.5" ry="7"/><ellipse cx="${hr - 1}" cy="100" rx="4.5" ry="7"/><path d="${body}"/>
+    <path d="M40,106 Q43,114 40,121" fill="none" stroke="currentColor" style="stroke:var(--ink-2)" stroke-width="4" stroke-linecap="round"/></g>${ribs}</svg>`;
+}
+function waLink(c, g, combo, bowl){
+  const b = breed();
+  const age = `${parseInt(A.years || 0, 10)} yr ${parseInt(A.months || 0, 10)} mo`;
+  const lines = [
+    `Hi Pawsly! Here is the meal plan for ${A.name.trim() || 'my dog'}:`,
+    `${b ? b.name : 'Mixed'}${A.size && b && b.askSize ? ` (${A.size})` : ''}, ${age}, ${A.weight} kg`,
+    `${PLAN[planType].label}: ${g} g a day in ${c.meals} meals`,
+    combo ? `Bowls per day: ${combo.text} (${rp(combo.price)})` : '',
+    bowl.none ? '' : `Bowl: ${[...bowl.protein, ...bowl.organ, ...bowl.veg, ...bowl.carb].map(i => ING[i]).join(', ')}${bowl.addons.length ? ' + Pawsly Potion' : ''}${bowl.preset ? ` (${bowl.preset})` : ''}`,
+    A.avoid.length ? `Avoid: ${A.avoid.map(a => ING[a]).join(', ')}` : '',
+  ].filter(Boolean);
+  return `https://wa.me/${CONFIG.WHATSAPP}?text=${encodeURIComponent(lines.join('\n'))}`;
+}
+
+/* ---------- Flow ---------- */
+function check(){
+  const id = STEPS[step];
+  if(id === 'name' && !A.name.trim()) return 'Add your dog\u2019s name to continue.';
+  if(id === 'breed'){
+    if(!A.breed) return 'Pick a breed, or choose mixed or not sure.';
+    if(breed().askSize && !A.size) return `Pick a size for ${A.name.trim() || 'your dog'}.`;
+  }
+  if(id === 'sex' && (!A.sex || !A.fixed)) return 'Answer both questions to continue.';
+  if(id === 'age'){
+    if(A.years === '' && A.months === '') return 'Choose years and months.';
+    if(ageMonths() < 2) return 'Puppies under 2 months should still be with their mother. Ask your vet about feeding.';
+  }
+  if(id === 'weight'){
+    const w = parseFloat(A.weight);
+    if(!(w >= 0.5 && w <= 100)) return 'Enter a weight between 0.5 and 100 kg.';
+  }
+  if(id === 'body' && !A.body) return 'Pick the closest body shape.';
+  if(id === 'activity' && !A.activity) return 'Pick an activity level.';
+  if(id === 'food' && !A.food) return 'Pick what they eat now.';
+  return '';
+}
+function next(){
+  error = check();
+  if(error){ render(false); return; }
+  step = Math.min(step + 1, STEPS.length - 1);
+  render(true);
+}
+function render(moved){
+  const id = STEPS[step];
+  $('#wrap').className = 'wrap s-' + id;
+  $('#back').hidden = step === 0;
+  const pct = Math.round(step / (STEPS.length - 1) * 100);
+  $('#progFill').style.width = pct + '%';
+  $('#prog').setAttribute('aria-valuenow', pct);
+  $('#screen').innerHTML = V[id]();
+  if(moved){
+    error = '';
+    const err = $('#screen .err'); if(err) err.textContent = '';
+    window.scrollTo(0, 0);
+    const first = $('#screen input, #screen select') || $('#screen h1');
+    if(first){ if(first.tagName === 'H1') first.setAttribute('tabindex', '-1'); first.focus({ preventScroll:true }); }
+  }
+}
+function toggle(arr, v){ const i = arr.indexOf(v); i < 0 ? arr.push(v) : arr.splice(i, 1); }
+function auto(){ error = ''; render(false); setTimeout(next, 220); }
+
+document.addEventListener('click', e => {
+  const t = e.target.closest('button, a'); if(!t) return;
+  const d = t.dataset;
+  if(d.go === 'next') return next();
+  if(d.breed){ A.breed = d.breed; A.size = null; breedQuery = ''; error = ''; return breed().askSize ? render(false) : auto(); }
+  if(d.size){ A.size = d.size; error = ''; return auto(); }
+  if(d.sex){ A.sex = d.sex; error = ''; return render(false); }
+  if(d.fixed){ A.fixed = d.fixed; error = ''; return auto(); }
+  if(d.body){ A.body = d.body; return auto(); }
+  if(d.activity){ A.activity = d.activity; return auto(); }
+  if(d.food){ A.food = d.food; return auto(); }
+  if(d.health){ toggle(A.health, d.health); return render(false); }
+  if(d.avoid){ toggle(A.avoid, d.avoid); return render(false); }
+  if(d.plan){ planType = d.plan; render(false); const s = $(`[data-plan="${d.plan}"]`); if(s) s.focus(); return; }
+  if(d.act === 'clearBreed'){ A.breed = null; A.size = null; render(false); const i = $('#in-breed'); if(i) i.focus(); return; }
+  if(d.act === 'wUp' || d.act === 'wDown'){
+    const w = parseFloat(A.weight) || 0, s = w < 10 ? 0.5 : 1;
+    A.weight = String(Math.max(0, Math.round((w + (d.act === 'wUp' ? s : -s)) * 10) / 10));
+    $('#in-weight').value = A.weight; return;
+  }
+  if(d.act === 'restart'){
+    Object.assign(A, { name:'', breed:null, size:null, sex:null, fixed:null, years:'', months:'', weight:'', body:null, activity:null, health:[], avoid:[], food:null });
+    step = 0; planType = 'full'; return render(true);
+  }
+});
+document.addEventListener('input', e => {
+  const id = e.target.id;
+  if(id === 'in-name') A.name = e.target.value;
+  if(id === 'in-weight') A.weight = e.target.value.replace(',', '.').replace(/[^\d.]/g, '');
+  if(id === 'in-breed'){ breedQuery = e.target.value; $('#breedList').innerHTML = breedList(); }
+});
+document.addEventListener('change', e => {
+  if(e.target.id === 'in-years') A.years = e.target.value;
+  if(e.target.id === 'in-months') A.months = e.target.value;
+});
+document.addEventListener('keydown', e => {
+  if(e.key === 'Enter' && e.target.matches('#in-name, #in-weight')){ e.preventDefault(); next(); }
+});
+$('#back').addEventListener('click', () => { error = ''; step = Math.max(0, step - 1); render(true); });
+
+render(false);
+</script>
+</body>
+</html>
